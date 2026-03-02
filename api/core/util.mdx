@@ -749,3 +749,146 @@ Check if UI schema has an ENABLE or DISABLE rule.
 ```typescript
 function hasEnableRule(uischema: UISchemaElement): boolean
 ```
+
+## Generators
+
+JSON Forms provides utilities to generate JSON Schema from data instances and UI Schema from JSON Schema.
+
+### Generate.jsonSchema
+
+Generate a JSON Schema from a data instance.
+
+```typescript
+Generate.jsonSchema(instance: Object, options?: any): JsonSchema
+```
+
+<ParamField path="instance" type="Object" required>
+  Data instance to generate schema from
+</ParamField>
+
+<ParamField path="options" type="any">
+  Optional generation options
+</ParamField>
+
+<ResponseField name="return" type="JsonSchema">
+  Generated JSON Schema describing the data structure
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { Generate } from '@jsonforms/core';
+
+const data = {
+  name: 'John Doe',
+  age: 30,
+  email: 'john@example.com'
+};
+
+const schema = Generate.jsonSchema(data);
+// Returns a JSON Schema with string and number types
+```
+
+### Generate.uiSchema
+
+Generate a default UI Schema from a JSON Schema.
+
+```typescript
+Generate.uiSchema(
+  jsonSchema: JsonSchema,
+  layoutType?: string,
+  prefix?: string,
+  rootSchema?: JsonSchema
+): UISchemaElement
+```
+
+<ParamField path="jsonSchema" type="JsonSchema" required>
+  JSON Schema to generate UI Schema from
+</ParamField>
+
+<ParamField path="layoutType" type="string">
+  Layout type to use (e.g., 'VerticalLayout', 'HorizontalLayout'). Defaults to 'VerticalLayout'
+</ParamField>
+
+<ParamField path="prefix" type="string">
+  Prefix for scope generation
+</ParamField>
+
+<ParamField path="rootSchema" type="JsonSchema">
+  Root schema for resolving references
+</ParamField>
+
+<ResponseField name="return" type="UISchemaElement">
+  Generated UI Schema with layout and controls
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { Generate } from '@jsonforms/core';
+
+const schema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    age: { type: 'number' }
+  }
+};
+
+const uischema = Generate.uiSchema(schema, 'VerticalLayout');
+// Returns a VerticalLayout with controls for name and age
+```
+
+### Generate.controlElement
+
+Create a control element for a specific property.
+
+```typescript
+Generate.controlElement(ref: string): ControlElement
+```
+
+<ParamField path="ref" type="string" required>
+  JSON Pointer reference to the property (e.g., '#/properties/name')
+</ParamField>
+
+<ResponseField name="return" type="ControlElement">
+  Control element with the specified scope
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { Generate } from '@jsonforms/core';
+
+const control = Generate.controlElement('#/properties/email');
+// Returns: { type: 'Control', scope: '#/properties/email' }
+```
+
+### generateJsonSchema
+
+Direct function to generate JSON Schema (also available via `Generate.jsonSchema`).
+
+```typescript
+function generateJsonSchema(instance: Object, options?: any): JsonSchema
+```
+
+### generateDefaultUISchema
+
+Direct function to generate default UI Schema (also available via `Generate.uiSchema`).
+
+```typescript
+function generateDefaultUISchema(
+  jsonSchema: JsonSchema,
+  layoutType?: string,
+  prefix?: string,
+  rootSchema?: JsonSchema
+): UISchemaElement
+```
+
+### createControlElement
+
+Direct function to create a control element (also available via `Generate.controlElement`).
+
+```typescript
+function createControlElement(ref: string): ControlElement
+```
