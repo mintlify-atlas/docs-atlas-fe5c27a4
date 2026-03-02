@@ -1,0 +1,151 @@
+{
+  "projectType": "framework",
+  "projectName": "JSON Forms",
+  "projectDescription": "A declarative framework for building forms from JSON Schema with React, Angular, and Vue support.",
+  "theme": "palm",
+  "primaryColor": "#0E7490",
+  "lightColor": "#06B6D4",
+  "darkColor": "#164E63",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/overview",
+              "concepts/json-schema",
+              "concepts/ui-schema",
+              "concepts/renderers",
+              "concepts/data-binding"
+            ]
+          },
+          {
+            "group": "Framework Integration",
+            "pages": [
+              "integrations/react",
+              "integrations/angular",
+              "integrations/vue"
+            ]
+          },
+          {
+            "group": "Renderer Sets",
+            "pages": [
+              "renderers/material",
+              "renderers/vanilla",
+              "renderers/angular-material",
+              "renderers/vue-vanilla",
+              "renderers/vue-vuetify"
+            ]
+          },
+          {
+            "group": "Advanced Topics",
+            "pages": [
+              "advanced/custom-renderers",
+              "advanced/custom-cells",
+              "advanced/rules",
+              "advanced/validation",
+              "advanced/i18n",
+              "advanced/middleware"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/basic-forms",
+              "examples/layouts",
+              "examples/arrays",
+              "examples/complex-schemas"
+            ]
+          },
+          {
+            "group": "Migration",
+            "pages": [
+              "migration/overview",
+              "migration/v3"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core Package",
+            "pages": [
+              "api/core/overview",
+              "api/core/actions",
+              "api/core/reducers",
+              "api/core/testers",
+              "api/core/util"
+            ]
+          },
+          {
+            "group": "React Package",
+            "pages": [
+              "api/react/components",
+              "api/react/hooks",
+              "api/react/context"
+            ]
+          },
+          {
+            "group": "Angular Package",
+            "pages": [
+              "api/angular/components",
+              "api/angular/services"
+            ]
+          },
+          {
+            "group": "Vue Package",
+            "pages": [
+              "api/vue/components",
+              "api/vue/composables"
+            ]
+          },
+          {
+            "group": "Types",
+            "pages": [
+              "api/types/json-schema",
+              "api/types/ui-schema",
+              "api/types/renderer"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "JSON Schema-based form generation",
+    "Multi-framework support (React, Angular, Vue)",
+    "Customizable renderers and cells",
+    "Built-in validation with AJV",
+    "Material Design and Vanilla renderer sets",
+    "Internationalization support",
+    "Rules for conditional rendering",
+    "Redux integration for React"
+  ],
+  "publicApiSurface": [
+    "@jsonforms/core",
+    "@jsonforms/react - JsonForms component",
+    "@jsonforms/angular - JsonFormsModule",
+    "@jsonforms/vue - useJsonForms composable",
+    "@jsonforms/material-renderers - materialRenderers, materialCells",
+    "@jsonforms/vanilla-renderers - vanillaRenderers, vanillaCells",
+    "@jsonforms/angular-material - JsonFormsAngularMaterialModule",
+    "@jsonforms/vue-vanilla - vanillaRenderers",
+    "@jsonforms/vue-vuetify - vuetifyRenderers",
+    "Actions - INIT, UPDATE_DATA, SET_SCHEMA, SET_UISCHEMA",
+    "Reducers - coreReducer, rendererReducer, cellReducer",
+    "Testers - rankWith, scopeEndsWith, isControl, isLayout",
+    "Util - createAjv, Resolve, Generate, Paths"
+  ]
+}
