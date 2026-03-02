@@ -1,0 +1,269 @@
+---
+title: "Angular Components"
+description: "Angular components for rendering JSON Forms in Angular applications"
+---
+
+The `@jsonforms/angular` package provides Angular components for integrating JSON Forms into Angular applications. These components handle form rendering, state management, and data binding.
+
+## JsonForms
+
+The main component for rendering a complete JSON Form. This is the root component that should be used in your Angular templates.
+
+```typescript
+import { JsonForms } from '@jsonforms/angular';
+```
+
+### Selector
+
+```html
+<jsonforms
+  [data]="data"
+  [schema]="schema"
+  [uischema]="uischema"
+  [renderers]="renderers"
+  (dataChange)="onDataChange($event)"
+></jsonforms>
+```
+
+### Inputs
+
+<ParamField path="data" type="any">
+  The data to be rendered by the form. This should match the structure defined in your JSON Schema.
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema" required>
+  The JSON Schema describing the data structure and validation rules.
+</ParamField>
+
+<ParamField path="uischema" type="UISchemaElement">
+  The UI Schema defining how the form should be rendered. If not provided, a default UI schema will be generated from the JSON Schema.
+</ParamField>
+
+<ParamField path="renderers" type="JsonFormsRendererRegistryEntry[]" required>
+  Array of renderer registrations that define which components handle which UI schema elements.
+</ParamField>
+
+<ParamField path="uischemas" type="{ tester: UISchemaTester; uischema: UISchemaElement }[]">
+  Array of UI schema registrations for dynamic schema resolution.
+</ParamField>
+
+<ParamField path="readonly" type="boolean" default="false">
+  When true, all form controls will be rendered in read-only mode.
+</ParamField>
+
+<ParamField path="validationMode" type="ValidationMode" default="'ValidateAndShow'">
+  Controls when validation errors are displayed. Options: `'ValidateAndShow'`, `'ValidateAndHide'`, `'NoValidation'`.
+</ParamField>
+
+<ParamField path="ajv" type="Ajv">
+  Custom AJV instance for validation. If not provided, a default instance will be created.
+</ParamField>
+
+<ParamField path="config" type="any">
+  Global configuration object that can be accessed by all renderers.
+</ParamField>
+
+<ParamField path="i18n" type="JsonFormsI18nState">
+  Internationalization configuration including locale, translate function, and error translation.
+</ParamField>
+
+<ParamField path="additionalErrors" type="ErrorObject[]">
+  Additional validation errors to display alongside schema validation errors.
+</ParamField>
+
+<ParamField path="middleware" type="Middleware" default="defaultMiddleware">
+  Custom middleware function for intercepting and modifying core state updates.
+</ParamField>
+
+### Outputs
+
+<ParamField path="dataChange" type="EventEmitter<any>">
+  Emitted when the form data changes. The event contains the updated data.
+</ParamField>
+
+<ParamField path="errors" type="EventEmitter<ErrorObject[]>">
+  Emitted when validation errors change. The event contains the current array of validation errors.
+</ParamField>
+
+### Example
+
+```typescript
+import { Component } from '@angular/core';
+import { JsonForms } from '@jsonforms/angular';
+import { angularMaterialRenderers } from '@jsonforms/angular-material';
+
+@Component({
+  selector: 'app-form',
+  template: `
+    <jsonforms
+      [data]="data"
+      [schema]="schema"
+      [uischema]="uischema"
+      [renderers]="renderers"
+      (dataChange)="onDataChange($event)"
+      (errors)="onErrors($event)"
+    ></jsonforms>
+  `
+})
+export class FormComponent {
+  renderers = angularMaterialRenderers;
+  
+  schema = {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      age: { type: 'number' }
+    }
+  };
+  
+  uischema = {
+    type: 'VerticalLayout',
+    elements: [
+      { type: 'Control', scope: '#/properties/name' },
+      { type: 'Control', scope: '#/properties/age' }
+    ]
+  };
+  
+  data = {};
+  
+  onDataChange(data: any) {
+    console.log('Data changed:', data);
+    this.data = data;
+  }
+  
+  onErrors(errors: any[]) {
+    console.log('Validation errors:', errors);
+  }
+}
+```
+
+## JsonFormsOutlet
+
+A directive component used internally by JsonForms for rendering UI schema elements. Can also be used directly for advanced use cases.
+
+```typescript
+import { JsonFormsOutlet } from '@jsonforms/angular';
+```
+
+### Selector
+
+```html
+<jsonforms-outlet [renderProps]="renderProps"></jsonforms-outlet>
+```
+
+### Inputs
+
+<ParamField path="renderProps" type="OwnPropsOfRenderer" required>
+  Renderer properties including schema, uischema, and path.
+</ParamField>
+
+## UnknownRenderer
+
+Fallback component displayed when no suitable renderer is found for a UI schema element.
+
+```typescript
+import { UnknownRenderer } from '@jsonforms/angular';
+```
+
+This component displays the message: "No applicable renderer found!"
+
+## Base Classes
+
+JSON Forms Angular provides base classes for creating custom renderers.
+
+### JsonFormsBaseRenderer
+
+Abstract base class for all renderers.
+
+```typescript
+import { JsonFormsBaseRenderer } from '@jsonforms/angular';
+
+export class MyCustomRenderer extends JsonFormsBaseRenderer<UISchemaElement> {
+  // Your implementation
+}
+```
+
+#### Inputs
+
+<ParamField path="uischema" type="UISchemaElement" required>
+  The UI schema element to render.
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema" required>
+  The JSON schema for this element.
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  The data path to the element being rendered.
+</ParamField>
+
+### JsonFormsControl
+
+Base class for control renderers that handle form inputs.
+
+```typescript
+import { JsonFormsControl } from '@jsonforms/angular';
+
+export class MyControlRenderer extends JsonFormsControl {
+  // Your implementation
+}
+```
+
+Provides access to:
+- `data`: Current control value
+- `label`: Computed label for the control
+- `errors`: Validation error message
+- `enabled`: Whether the control is enabled
+- `form`: Angular FormControl instance
+- `onChange(event)`: Method to handle value changes
+
+### JsonFormsAbstractControl
+
+Lower-level base class for control renderers with more customization options.
+
+```typescript
+import { JsonFormsAbstractControl } from '@jsonforms/angular';
+
+export class MyCustomControl extends JsonFormsAbstractControl<StatePropsOfControl> {
+  protected mapToProps(state: JsonFormsState): StatePropsOfControl {
+    return mapStateToControlProps(state, this.getOwnProps());
+  }
+}
+```
+
+#### Inputs
+
+<ParamField path="id" type="string">
+  Control identifier for accessibility.
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Whether the control should be disabled.
+</ParamField>
+
+<ParamField path="visible" type="boolean">
+  Whether the control should be visible.
+</ParamField>
+
+## Module Import
+
+To use JSON Forms Angular components, import the `JsonFormsModule` in your Angular module:
+
+```typescript
+import { NgModule } from '@angular/core';
+import { JsonFormsModule } from '@jsonforms/angular';
+import { angularMaterialRenderers } from '@jsonforms/angular-material';
+
+@NgModule({
+  imports: [
+    JsonFormsModule,
+    // ... other imports
+  ],
+  // ... rest of module configuration
+})
+export class AppModule { }
+```
+
+<Note>
+Make sure to provide renderers to the `JsonForms` component. Without renderers, no UI will be displayed.
+</Note>

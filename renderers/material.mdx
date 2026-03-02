@@ -1,0 +1,167 @@
+---
+title: Material UI Renderers
+description: Material UI renderer set for React applications with comprehensive form controls, layouts, and cells
+---
+
+The Material UI renderer set provides a complete set of renderers for React applications using Material UI components. This package includes controls, layouts, cells, and complex renderers built on top of MUI (Material-UI).
+
+## Installation
+
+```bash
+npm install @jsonforms/material-renderers
+```
+
+### Peer Dependencies
+
+The Material UI renderer set requires the following peer dependencies:
+
+```bash
+npm install @jsonforms/core @jsonforms/react @mui/material @mui/icons-material @mui/x-date-pickers @emotion/react @emotion/styled react
+```
+
+## Usage
+
+Import and register the Material renderers and cells with JSON Forms:
+
+```tsx
+import { JsonForms } from '@jsonforms/react';
+import { materialRenderers, materialCells } from '@jsonforms/material-renderers';
+
+function App() {
+  const [data, setData] = useState({});
+  
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={materialRenderers}
+      cells={materialCells}
+      onChange={({ data }) => setData(data)}
+    />
+  );
+}
+```
+
+## Available Renderers
+
+### Control Renderers
+
+Control renderers handle individual form inputs:
+
+- **MaterialArrayControlRenderer** - Array input with add/remove functionality
+- **MaterialBooleanControl** - Checkbox for boolean values
+- **MaterialBooleanToggleControl** - Toggle switch for boolean values
+- **MaterialNativeControl** - Native HTML control fallback
+- **MaterialEnumControl** - Select dropdown for enum values
+- **MaterialIntegerControl** - Integer number input
+- **MaterialNumberControl** - Decimal number input
+- **MaterialTextControl** - Text input field
+- **MaterialDateTimeControl** - Date and time picker
+- **MaterialDateControl** - Date picker
+- **MaterialTimeControl** - Time picker
+- **MaterialSliderControl** - Slider for numeric ranges
+- **MaterialRadioGroupControl** - Radio button group
+- **MaterialOneOfRadioGroupControl** - Radio group for oneOf schemas
+- **MaterialOneOfEnumControl** - Select for oneOf with enum
+- **MaterialAnyOfStringOrEnumControl** - Control for anyOf string/enum schemas
+
+### Layout Renderers
+
+Layout renderers organize form structure:
+
+- **MaterialGroupLayout** - Groups elements with optional label
+- **MaterialHorizontalLayout** - Arranges elements horizontally
+- **MaterialVerticalLayout** - Arranges elements vertically (default)
+- **MaterialCategorizationLayout** - Tab-based categorization
+- **MaterialCategorizationStepperLayout** - Stepper-based categorization
+- **MaterialArrayLayout** - Array layout with Material styling
+
+### Complex Renderers
+
+Complex renderers handle advanced schema features:
+
+- **MaterialObjectRenderer** - Nested object structures
+- **MaterialAllOfRenderer** - AllOf schema composition
+- **MaterialAnyOfRenderer** - AnyOf schema alternatives
+- **MaterialOneOfRenderer** - OneOf schema selection
+- **MaterialEnumArrayRenderer** - Array of enum values with checkboxes
+
+### Additional Renderers
+
+- **MaterialLabelRenderer** - Displays label elements
+- **MaterialListWithDetailRenderer** - Master-detail view for arrays
+
+## Available Cells
+
+Cells are used within table or array layouts:
+
+- **MaterialBooleanCell** - Boolean checkbox cell
+- **MaterialBooleanToggleCell** - Boolean toggle cell
+- **MaterialDateCell** - Date picker cell
+- **MaterialEnumCell** - Enum select cell
+- **MaterialIntegerCell** - Integer input cell
+- **MaterialNumberCell** - Number input cell
+- **MaterialNumberFormatCell** - Formatted number cell
+- **MaterialOneOfEnumCell** - OneOf enum select cell
+- **MaterialTextCell** - Text input cell
+- **MaterialTimeCell** - Time picker cell
+
+## Unwrapped Components
+
+The package also exports unwrapped versions of components that can be used independently:
+
+```tsx
+import { Unwrapped } from '@jsonforms/material-renderers';
+
+// Access unwrapped components
+const { MaterialTextControl, MaterialBooleanControl } = Unwrapped;
+```
+
+## Customization
+
+You can customize Material renderers by:
+
+1. **Using MUI Theme** - Apply your Material UI theme to style all renderers
+2. **Custom Renderers** - Create custom renderers that extend the Material renderers
+3. **Custom Testers** - Override default testers to change when renderers are applied
+
+### Example: Custom Theme
+
+```tsx
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { JsonForms } from '@jsonforms/react';
+import { materialRenderers, materialCells } from '@jsonforms/material-renderers';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+  },
+});
+
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <JsonForms
+        schema={schema}
+        uischema={uischema}
+        data={data}
+        renderers={materialRenderers}
+        cells={materialCells}
+      />
+    </ThemeProvider>
+  );
+}
+```
+
+## TypeScript Support
+
+The Material renderer set is written in TypeScript and includes full type definitions.
+
+## Learn More
+
+- [Custom Renderers](/advanced/custom-renderers)
+- [Testers](/api/core/testers)
+- [Material UI Documentation](https://mui.com/)

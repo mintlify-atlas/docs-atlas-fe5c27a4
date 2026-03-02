@@ -1,0 +1,332 @@
+---
+title: "Vue Components"
+description: "Vue components for rendering JSON Forms in Vue 3 applications"
+---
+
+The `@jsonforms/vue` package provides Vue 3 components for integrating JSON Forms into Vue applications. These components use Vue's Composition API and provide/inject pattern for state management.
+
+## JsonForms
+
+The main component for rendering a complete JSON Form. This is the root component that provides form state to all child components.
+
+```typescript
+import { JsonForms } from '@jsonforms/vue';
+```
+
+### Props
+
+<ParamField path="data" type="any">
+  The data to be rendered by the form. Can be any JSON-compatible type (object, array, string, number, boolean).
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema">
+  The JSON Schema describing the data structure and validation rules. If not provided, a schema will be generated from the data.
+</ParamField>
+
+<ParamField path="uischema" type="UISchemaElement">
+  The UI Schema defining how the form should be rendered. If not provided, a default UI schema will be generated from the JSON Schema.
+</ParamField>
+
+<ParamField path="renderers" type="JsonFormsRendererRegistryEntry[]" required>
+  Array of renderer registrations that define which components handle which UI schema elements. This is required.
+</ParamField>
+
+<ParamField path="cells" type="JsonFormsCellRendererRegistryEntry[]" default="[]">
+  Array of cell renderer registrations for rendering controls in compact mode (e.g., within tables).
+</ParamField>
+
+<ParamField path="config" type="any">
+  Global configuration object that can be accessed by all renderers.
+</ParamField>
+
+<ParamField path="readonly" type="boolean" default="false">
+  When true, all form controls will be rendered in read-only mode.
+</ParamField>
+
+<ParamField path="uischemas" type="JsonFormsUISchemaRegistryEntry[]" default="[]">
+  Array of UI schema registrations for dynamic schema resolution.
+</ParamField>
+
+<ParamField path="validationMode" type="ValidationMode" default="'ValidateAndShow'">
+  Controls when validation errors are displayed. Options:
+  - `'ValidateAndShow'`: Validate and show errors
+  - `'ValidateAndHide'`: Validate but don't show errors
+  - `'NoValidation'`: Don't validate
+</ParamField>
+
+<ParamField path="ajv" type="Ajv">
+  Custom AJV instance for validation. If not provided, a default instance will be created.
+</ParamField>
+
+<ParamField path="i18n" type="JsonFormsI18nState">
+  Internationalization configuration including locale, translate function, and error translation.
+</ParamField>
+
+<ParamField path="additionalErrors" type="ErrorObject[]" default="[]">
+  Additional validation errors to display alongside schema validation errors.
+</ParamField>
+
+<ParamField path="middleware" type="Middleware" default="defaultMiddleware">
+  Custom middleware function for intercepting and modifying core state updates.
+</ParamField>
+
+### Events
+
+<ParamField path="@change" type="JsonFormsChangeEvent">
+  Emitted when the form data or validation errors change.
+  
+  Event structure:
+  ```typescript
+  {
+    data: any;           // Updated form data
+    errors: ErrorObject[]; // Current validation errors
+  }
+  ```
+</ParamField>
+
+### Example
+
+```vue
+<template>
+  <json-forms
+    :data="formData"
+    :schema="schema"
+    :uischema="uischema"
+    :renderers="renderers"
+    @change="onChange"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { JsonForms } from '@jsonforms/vue';
+import { vanillaRenderers } from '@jsonforms/vue-vanilla';
+
+const renderers = vanillaRenderers;
+
+const schema = {
+  type: 'object',
+  properties: {
+    name: {
+      type: 'string',
+      minLength: 3
+    },
+    email: {
+      type: 'string',
+      format: 'email'
+    },
+    age: {
+      type: 'number',
+      minimum: 0,
+      maximum: 120
+    }
+  },
+  required: ['name', 'email']
+};
+
+const uischema = {
+  type: 'VerticalLayout',
+  elements: [
+    {
+      type: 'Control',
+      scope: '#/properties/name'
+    },
+    {
+      type: 'Control',
+      scope: '#/properties/email'
+    },
+    {
+      type: 'Control',
+      scope: '#/properties/age'
+    }
+  ]
+};
+
+const formData = ref({});
+
+const onChange = (event: any) => {
+  console.log('Data:', event.data);
+  console.log('Errors:', event.errors);
+  formData.value = event.data;
+};
+</script>
+```
+
+## DispatchRenderer
+
+Internal component that dispatches rendering to the appropriate registered renderer based on the UI schema element. This component selects the best matching renderer using tester functions.
+
+```typescript
+import { DispatchRenderer } from '@jsonforms/vue';
+```
+
+### Props
+
+Accepts all renderer props via `rendererProps()`:
+
+<ParamField path="schema" type="JsonSchema" required>
+  The JSON Schema for the current element.
+</ParamField>
+
+<ParamField path="uischema" type="UISchemaElement" required>
+  The UI Schema element to render.
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  The data path to the current element.
+</ParamField>
+
+<ParamField path="enabled" type="boolean">
+  Whether the element is enabled.
+</ParamField>
+
+<ParamField path="renderers" type="JsonFormsRendererRegistryEntry[]">
+  Optional override for the renderer registry.
+</ParamField>
+
+<ParamField path="cells" type="JsonFormsCellRendererRegistryEntry[]">
+  Optional override for the cell registry.
+</ParamField>
+
+<ParamField path="config" type="any">
+  Optional override for the configuration.
+</ParamField>
+
+### Usage
+
+```vue
+<template>
+  <dispatch-renderer
+    :schema="schema"
+    :uischema="uischema"
+    :path="path"
+  />
+</template>
+```
+
+## DispatchCell
+
+Internal component for dispatching cell rendering. Similar to DispatchRenderer but specifically for cells, which are compact control renderers typically used in tables.
+
+```typescript
+import { DispatchCell } from '@jsonforms/vue';
+```
+
+### Props
+
+Accepts the same props as `DispatchRenderer` but with `ControlElement` type for uischema:
+
+<ParamField path="uischema" type="ControlElement" required>
+  The control UI Schema element to render as a cell.
+</ParamField>
+
+### Usage
+
+```vue
+<template>
+  <dispatch-cell
+    :schema="schema"
+    :uischema="controlUischema"
+    :path="path"
+  />
+</template>
+```
+
+## UnknownRenderer
+
+Fallback component displayed when no suitable renderer is found for a UI schema element.
+
+```typescript
+import { UnknownRenderer } from '@jsonforms/vue';
+```
+
+This component displays the message: "No applicable renderer found."
+
+### Template
+
+```vue
+<template>
+  <div>No applicable renderer found.</div>
+</template>
+```
+
+## Creating Custom Renderers
+
+To create custom renderers for Vue, you can use the composables provided by the package. Here's an example:
+
+```vue
+<template>
+  <div v-if="control.visible" class="my-custom-control">
+    <label>{{ control.label }}</label>
+    <input
+      :value="control.data"
+      :disabled="!control.enabled"
+      @input="onChange($event.target.value)"
+    />
+    <div v-if="control.errors" class="error">
+      {{ control.errors }}
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { rendererProps, useJsonFormsControl } from '@jsonforms/vue';
+
+const props = defineProps({
+  ...rendererProps<ControlElement>()
+});
+
+const { control, handleChange } = useJsonFormsControl(props);
+
+const onChange = (value: string) => {
+  handleChange(control.value.path, value);
+};
+</script>
+```
+
+Then register your custom renderer:
+
+```typescript
+import { rankWith, isStringControl } from '@jsonforms/core';
+import MyCustomControl from './MyCustomControl.vue';
+
+const myCustomControlRenderer = {
+  renderer: MyCustomControl,
+  tester: rankWith(3, isStringControl)
+};
+
+const renderers = [
+  ...vanillaRenderers,
+  myCustomControlRenderer
+];
+```
+
+## Provide/Inject Pattern
+
+The `JsonForms` component provides the following values to all descendant components:
+
+- `jsonforms`: The complete JSON Forms state (JsonFormsSubStates)
+- `dispatch`: Function to dispatch core actions
+
+You can access these in custom components:
+
+```vue
+<script setup lang="ts">
+import { inject } from 'vue';
+import { JsonFormsSubStates, Dispatch, CoreActions } from '@jsonforms/core';
+
+const jsonforms = inject<JsonFormsSubStates>('jsonforms');
+const dispatch = inject<Dispatch<CoreActions>>('dispatch');
+
+if (!jsonforms || !dispatch) {
+  throw new Error('Must be used within JsonForms component');
+}
+
+console.log('Current data:', jsonforms.core.data);
+console.log('Current schema:', jsonforms.core.schema);
+</script>
+```
+
+<Note>
+  All custom renderers must be used within a `JsonForms` component to have access to the form state via Vue's provide/inject.
+</Note>

@@ -1,0 +1,460 @@
+---
+title: Middleware
+description: Intercept and modify JSON Forms state changes with custom middleware functions
+---
+
+## Overview
+
+Middleware allows you to intercept state changes in JSON Forms before they are applied. This enables you to:
+
+- Transform or validate data before updates
+- Log state changes for debugging
+- Implement custom business logic
+- Prevent certain updates
+- Synchronize with external systems
+
+## Middleware Type
+
+The middleware interface is defined as:
+
+```typescript
+export interface Middleware {
+  (
+    state: JsonFormsCore,
+    action: CoreActions,
+    defaultReducer: (state: JsonFormsCore, action: CoreActions) => JsonFormsCore
+  ): JsonFormsCore;
+}
+```
+
+### Parameters
+
+- `state`: The current JSON Forms state
+- `action`: The action being dispatched
+- `defaultReducer`: The default reducer function to apply the action
+
+### Returns
+
+The new state after applying the middleware logic and optionally the default reducer.
+
+## Default Middleware
+
+The default middleware simply calls the default reducer:
+
+```typescript
+export const defaultMiddleware: Middleware = (state, action, defaultReducer) =>
+  defaultReducer(state, action);
+```
+
+## Using Middleware
+
+Provide your middleware to JSON Forms:
+
+```typescript
+import { JsonForms } from '@jsonforms/react';
+import { Middleware, JsonFormsCore, CoreActions } from '@jsonforms/core';
+
+const myMiddleware: Middleware = (state, action, defaultReducer) => {
+  // Your middleware logic
+  console.log('Action:', action);
+  
+  // Call the default reducer
+  const newState = defaultReducer(state, action);
+  
+  console.log('New state:', newState);
+  return newState;
+};
+
+function App() {
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={renderers}
+      middleware={myMiddleware}
+    />
+  );
+}
+```
+
+## JsonFormsCore State
+
+The `JsonFormsCore` state contains:
+
+```typescript
+export interface JsonFormsCore {
+  data: any;
+  schema?: JsonSchema;
+  uischema?: UISchemaElement;
+  errors?: ErrorObject[];
+  validator?: ValidateFunction;
+  ajv?: Ajv;
+  refParserOptions?: RefParserOptions;
+  // ... other properties
+}
+```
+
+## CoreActions Type
+
+Actions include data updates, initialization, and other state changes. The exact structure depends on the action type.
+
+## Middleware Examples
+
+### Logging Middleware
+
+Log all state changes:
+
+```typescript
+const loggingMiddleware: Middleware = (state, action, defaultReducer) => {
+  console.group('JSON Forms State Change');
+  console.log('Previous State:', state);
+  console.log('Action:', action);
+  
+  const newState = defaultReducer(state, action);
+  
+  console.log('New State:', newState);
+  console.groupEnd();
+  
+  return newState;
+};
+```
+
+### Data Validation Middleware
+
+Validate data before applying changes:
+
+```typescript
+const validationMiddleware: Middleware = (state, action, defaultReducer) => {
+  const newState = defaultReducer(state, action);
+  
+  // Custom validation logic
+  if (newState.data?.email && !isValidEmail(newState.data.email)) {
+    console.warn('Invalid email detected:', newState.data.email);
+  }
+  
+  return newState;
+};
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+```
+
+### Data Transformation Middleware
+
+Transform data before it's applied:
+
+```typescript
+const transformationMiddleware: Middleware = (state, action, defaultReducer) => {
+  const newState = defaultReducer(state, action);
+  
+  // Transform specific fields
+  if (newState.data?.phoneNumber) {
+    newState.data.phoneNumber = formatPhoneNumber(newState.data.phoneNumber);
+  }
+  
+  return newState;
+};
+
+function formatPhoneNumber(phone: string): string {
+  // Remove non-digits
+  const digits = phone.replace(/\D/g, '');
+  
+  // Format as (XXX) XXX-XXXX
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  
+  return phone;
+}
+```
+
+### Debouncing Middleware
+
+Debounce rapid data changes:
+
+```typescript
+const createDebouncingMiddleware = (delay: number = 300): Middleware => {
+  let timeoutId: NodeJS.Timeout | null = null;
+  let pendingState: JsonFormsCore | null = null;
+  
+  return (state, action, defaultReducer) => {
+    const newState = defaultReducer(state, action);
+    
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    
+    pendingState = newState;
+    
+    timeoutId = setTimeout(() => {
+      // Notify about the debounced state change
+      console.log('Debounced state:', pendingState);
+      timeoutId = null;
+      pendingState = null;
+    }, delay);
+    
+    return newState;
+  };
+};
+
+const debouncingMiddleware = createDebouncingMiddleware(300);
+```
+
+### Conditional Update Middleware
+
+Prevent certain updates based on conditions:
+
+```typescript
+const conditionalUpdateMiddleware: Middleware = (state, action, defaultReducer) => {
+  // Check if update should be allowed
+  const shouldAllowUpdate = checkUpdatePermissions(state, action);
+  
+  if (!shouldAllowUpdate) {
+    console.warn('Update prevented by middleware');
+    return state; // Return unchanged state
+  }
+  
+  return defaultReducer(state, action);
+};
+
+function checkUpdatePermissions(
+  state: JsonFormsCore,
+  action: CoreActions
+): boolean {
+  // Your permission logic
+  // For example, prevent updates if form is locked
+  return !state.readonly;
+}
+```
+
+### Sync with External Store Middleware
+
+Synchronize state with an external store:
+
+```typescript
+const syncMiddleware = (externalStore: any): Middleware => {
+  return (state, action, defaultReducer) => {
+    const newState = defaultReducer(state, action);
+    
+    // Sync with external store
+    externalStore.update(newState.data);
+    
+    return newState;
+  };
+};
+
+// Usage
+const myStore = createStore();
+const middleware = syncMiddleware(myStore);
+```
+
+### Audit Trail Middleware
+
+Track all changes for audit purposes:
+
+```typescript
+interface AuditEntry {
+  timestamp: Date;
+  action: string;
+  previousData: any;
+  newData: any;
+  user?: string;
+}
+
+const createAuditMiddleware = (auditLog: AuditEntry[]): Middleware => {
+  return (state, action, defaultReducer) => {
+    const newState = defaultReducer(state, action);
+    
+    // Record the change
+    auditLog.push({
+      timestamp: new Date(),
+      action: action.type,
+      previousData: state.data,
+      newData: newState.data,
+      user: getCurrentUser(), // Your user tracking function
+    });
+    
+    return newState;
+  };
+};
+
+// Usage
+const auditLog: AuditEntry[] = [];
+const auditMiddleware = createAuditMiddleware(auditLog);
+```
+
+### Field-Specific Middleware
+
+Apply logic to specific fields:
+
+```typescript
+const fieldSpecificMiddleware: Middleware = (state, action, defaultReducer) => {
+  const newState = defaultReducer(state, action);
+  
+  // Auto-calculate total when quantity or price changes
+  if (newState.data?.quantity && newState.data?.price) {
+    newState.data.total = newState.data.quantity * newState.data.price;
+  }
+  
+  // Auto-uppercase certain fields
+  if (newState.data?.countryCode) {
+    newState.data.countryCode = newState.data.countryCode.toUpperCase();
+  }
+  
+  return newState;
+};
+```
+
+## Composing Multiple Middleware
+
+Chain multiple middleware functions:
+
+```typescript
+const composeMiddleware = (...middlewares: Middleware[]): Middleware => {
+  return (state, action, defaultReducer) => {
+    // Create a chain of middleware
+    const chain = middlewares.reduceRight(
+      (next, middleware) => {
+        return (currentState: JsonFormsCore) => {
+          return middleware(currentState, action, (s) => next(s));
+        };
+      },
+      (finalState: JsonFormsCore) => defaultReducer(finalState, action)
+    );
+    
+    return chain(state);
+  };
+};
+
+// Usage
+const combinedMiddleware = composeMiddleware(
+  loggingMiddleware,
+  validationMiddleware,
+  transformationMiddleware
+);
+
+function App() {
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={renderers}
+      middleware={combinedMiddleware}
+    />
+  );
+}
+```
+
+## Error Handling in Middleware
+
+Handle errors gracefully:
+
+```typescript
+const errorHandlingMiddleware: Middleware = (state, action, defaultReducer) => {
+  try {
+    const newState = defaultReducer(state, action);
+    
+    // Your middleware logic
+    // ...
+    
+    return newState;
+  } catch (error) {
+    console.error('Middleware error:', error);
+    
+    // Optionally notify user
+    notifyError('An error occurred while updating the form');
+    
+    // Return previous state to prevent corruption
+    return state;
+  }
+};
+```
+
+## Performance Considerations
+
+Middleware runs on every state change. Keep it performant:
+
+```typescript
+const performantMiddleware: Middleware = (state, action, defaultReducer) => {
+  // Quick check before expensive operations
+  if (!shouldProcessAction(action)) {
+    return defaultReducer(state, action);
+  }
+  
+  const newState = defaultReducer(state, action);
+  
+  // Expensive operation only when needed
+  if (hasSignificantChange(state.data, newState.data)) {
+    performExpensiveOperation(newState.data);
+  }
+  
+  return newState;
+};
+
+function hasSignificantChange(oldData: any, newData: any): boolean {
+  // Only check specific fields
+  return oldData?.importantField !== newData?.importantField;
+}
+```
+
+## Testing Middleware
+
+Test your middleware in isolation:
+
+```typescript
+import { JsonFormsCore, CoreActions } from '@jsonforms/core';
+
+describe('loggingMiddleware', () => {
+  it('should log state changes', () => {
+    const consoleSpy = jest.spyOn(console, 'log');
+    
+    const state: JsonFormsCore = {
+      data: { name: 'John' },
+    };
+    
+    const action: CoreActions = {
+      type: 'UPDATE_DATA',
+      path: 'name',
+      value: 'Jane',
+    };
+    
+    const defaultReducer = (s: JsonFormsCore) => ({
+      ...s,
+      data: { name: 'Jane' },
+    });
+    
+    loggingMiddleware(state, action, defaultReducer);
+    
+    expect(consoleSpy).toHaveBeenCalled();
+  });
+});
+```
+
+## Best Practices
+
+1. **Keep middleware pure**: Avoid side effects when possible
+2. **Call defaultReducer**: Always call the default reducer unless intentionally preventing the update
+3. **Handle errors**: Wrap middleware logic in try-catch blocks
+4. **Consider performance**: Avoid expensive operations on every state change
+5. **Return consistent state**: Ensure the returned state structure is valid
+6. **Document behavior**: Clearly document what your middleware does
+7. **Test thoroughly**: Test middleware with various actions and states
+8. **Compose carefully**: When composing middleware, consider the execution order
+9. **Avoid mutation**: Don't mutate the state object; create new objects
+10. **Use TypeScript**: Leverage type safety for better reliability
+
+## Common Use Cases
+
+1. **Analytics**: Track user interactions and form completion
+2. **Auto-save**: Automatically save form data to a backend
+3. **Validation**: Add custom validation beyond JSON Schema
+4. **Formatting**: Auto-format fields as users type
+5. **Calculations**: Compute derived values based on other fields
+6. **Permissions**: Control who can edit which fields
+7. **Versioning**: Track different versions of form data
+8. **Undo/Redo**: Implement undo/redo functionality
+9. **Cross-field validation**: Validate relationships between fields
+10. **External sync**: Keep form data in sync with external systems

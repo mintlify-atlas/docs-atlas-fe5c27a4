@@ -1,0 +1,402 @@
+---
+title: Migrating to JSON Forms 3.x
+description: Complete migration guide for upgrading to JSON Forms 3.x, including breaking changes in testers, schema resolution, and framework support
+---
+
+This guide covers all breaking changes and migration steps for JSON Forms 3.x releases.
+
+## Migrating to JSON Forms 3.7
+
+### Angular 19-21 Support
+
+<Warning>
+  JSON Forms 3.7 now targets Angular 19, 20, and 21. Angular 18 and earlier versions are no longer supported.
+</Warning>
+
+When using JSON Forms 3.7, your Angular application must target Angular 19, 20, or 21.
+
+**Migration Options:**
+
+- **Upgrade to Angular 19+**: Follow the [Angular Update Guide](https://update.angular.io/) to upgrade your application
+- **Stay on Angular 18**: Use JSON Forms 3.6 if you need to remain on Angular 18
+
+## Migrating to JSON Forms 3.6
+
+### UI Schema Type Changes
+
+<Warning>
+  The `UISchemaElement` and `Condition` types were renamed and new union types were introduced.
+</Warning>
+
+**Type Renames:**
+
+- `UISchemaElement` → `BaseUISchemaElement`
+- `Condition` → `BaseCondition`
+
+**New Union Types:**
+
+- `UISchemaElement` - Union of all available UI schema types (includes `BaseUISchemaElement` for backward compatibility)
+- `Condition` - Union of all available condition types (includes `BaseCondition` for backward compatibility)
+
+**Migration Steps:**
+
+Most code should work without changes due to backward compatibility. However, if you encounter type errors:
+
+<Steps>
+  <Step title="Replace UISchemaElement references">
+    If you need the old behavior, replace `UISchemaElement` with `BaseUISchemaElement`:
+
+    ```ts
+    // Before (or if you encounter errors)
+    function processUISchema(element: UISchemaElement) { ... }
+
+    // After (for strict typing)
+    function processUISchema(element: BaseUISchemaElement) { ... }
+    ```
+  </Step>
+
+  <Step title="Replace Condition references">
+    If you need the old behavior, replace `Condition` with `BaseCondition`:
+
+    ```ts
+    // Before (or if you encounter errors)
+    function evaluateCondition(condition: Condition) { ... }
+
+    // After (for strict typing)
+    function evaluateCondition(condition: BaseCondition) { ... }
+    ```
+  </Step>
+</Steps>
+
+## Migrating to JSON Forms 3.5
+
+### Angular 18-19 Support
+
+<Warning>
+  JSON Forms 3.5 now targets Angular 18 and 19. Earlier versions are no longer supported.
+</Warning>
+
+When using JSON Forms 3.5, your Angular application must target Angular 18 or 19.
+
+**Migration Options:**
+
+- **Upgrade to Angular 18 or 19**: Follow the Angular update guide
+- **Stay on Angular 17**: Use JSON Forms 3.4 if you need to remain on Angular 17
+
+## Migrating to JSON Forms 3.3
+
+### Angular 17-18 Support
+
+<Warning>
+  JSON Forms 3.3 now targets Angular 17 and 18. Earlier versions are no longer supported.
+</Warning>
+
+When using JSON Forms 3.3, your Angular application must target Angular 17 or 18.
+
+**Migration Options:**
+
+- **Upgrade to Angular 17 or 18**: Follow the Angular update guide
+- **Stay on Angular 16**: Use JSON Forms 3.2 if you need to remain on Angular 16
+
+## Migrating to JSON Forms 3.2
+
+### React Material Renderers Using Outlined Inputs
+
+JSON Forms 3.2 now uses the `outlined` input variant as the default, aligning with Material UI v5+ defaults.
+
+**If you prefer the `standard` input variant** (the previous default), configure it using the Material UI `ThemeProvider`:
+
+```ts
+import { JsonForms } from '@jsonforms/react';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+
+const theme = createTheme({
+  components: {
+    MuiFormControl: {
+      defaultProps: {
+        variant: 'standard',
+      },
+    },
+    MuiTextField: {
+      defaultProps: {
+        variant: 'standard',
+      },
+    },
+    MuiSelect: {
+      defaultProps: {
+        variant: 'standard',
+      },
+    },
+  },
+});
+
+// Wrap JsonForms with ThemeProvider
+<ThemeProvider theme={theme}>
+  <JsonForms {...props} />
+</ThemeProvider>;
+```
+
+### Angular 16-17 Support
+
+<Warning>
+  JSON Forms 3.2 now targets Angular 16 and 17. Some refactorings in Angular Material were necessary.
+</Warning>
+
+When using JSON Forms 3.2, your Angular application must target Angular 16 or 17.
+
+**Migration Options:**
+
+- **Upgrade to Angular 16 or 17**: Follow the Angular update guide
+- **Stay on Angular 14**: Use JSON Forms 3.1
+- **Using Angular 15**: Use the prerelease `3.2.0-alpha.4` (Angular 15 is only supported in this prerelease)
+
+<Note>
+  Angular 15 support is limited to the JSON Forms prerelease version `3.2.0-alpha.4`.
+</Note>
+
+## Migrating to JSON Forms 3.0
+
+### Additional Parameter for Testers
+
+<Warning>
+  This is a breaking change affecting all custom testers. You must update your tester signatures to include the new `TesterContext` parameter.
+</Warning>
+
+**Previous Tester Interfaces:**
+
+```ts
+type Tester = (uischema: UISchemaElement, schema: JsonSchema) => boolean;
+type RankedTester = (uischema: UISchemaElement, schema: JsonSchema) => number;
+```
+
+**New Tester Interfaces:**
+
+```ts
+interface TesterContext {
+  rootSchema: JsonSchema;
+  config: any;
+}
+
+type Tester = (
+  uischema: UISchemaElement,
+  schema: JsonSchema,
+  context: TesterContext
+) => boolean;
+
+type RankedTester = (
+  uischema: UISchemaElement,
+  schema: JsonSchema,
+  context: TesterContext
+) => number;
+```
+
+**Why This Change?**
+
+Previously, testers could not properly handle schemas containing `$ref`s pointing to parent elements. The workaround was to manually resolve the JSON Schema before passing it to JSON Forms.
+
+The new `TesterContext` provides:
+
+- **`rootSchema`** - Allows testers to resolve any `$ref` in their schema
+- **`config`** - Provides access to the form-wide configuration
+
+**Migration Steps:**
+
+<Steps>
+  <Step title="Update tester signatures">
+    Add the `context` parameter to all custom testers:
+
+    ```ts
+    // Before
+    const myTester: RankedTester = (
+      uischema: UISchemaElement,
+      schema: JsonSchema
+    ) => {
+      // tester logic
+      return 10;
+    };
+
+    // After
+    const myTester: RankedTester = (
+      uischema: UISchemaElement,
+      schema: JsonSchema,
+      context: TesterContext
+    ) => {
+      // tester logic - can now use context.rootSchema and context.config
+      return 10;
+    };
+    ```
+  </Step>
+
+  <Step title="Remove manual schema resolving (if applicable)">
+    If you were manually resolving schemas before passing them to JSON Forms, you can now remove that code in many cases, as testers can resolve `$ref`s using `context.rootSchema`.
+  </Step>
+</Steps>
+
+### Removal of JSON Schema $Ref Parser
+
+<Warning>
+  This change only affects React users who relied on automatic external reference resolution. Vue and Angular users are not affected.
+</Warning>
+
+The `json-schema-ref-parser` dependency was removed from the core package to improve performance and reduce bundle size.
+
+**Why This Change?**
+
+- **Performance**: Resolving was slow and applied to all users whether needed or not
+- **Side Effects**: Schemas were mutated in place
+- **Dependencies**: Required Node-only dependencies that needed polyfilling
+
+**Who Is Affected?**
+
+Most React users are unaffected. You need to take action only if you:
+
+- Used the `refParserOptions` prop
+- Relied on external JSON Schema reference resolution
+- Have complex reference setups that JSON Forms' internal processing can't handle
+
+**Migration Steps:**
+
+<Steps>
+  <Step title="Install a reference resolver library">
+    Choose and install a library for resolving references:
+
+    ```bash
+    npm install @apidevtools/json-schema-ref-parser
+    # or
+    npm install json-refs
+    ```
+  </Step>
+
+  <Step title="Resolve schema before passing to JSON Forms">
+    Use the library to resolve references before rendering:
+
+    ```ts
+    import React, { useState, useEffect } from 'react';
+    import { JsonForms } from '@jsonforms/react';
+    import {
+      materialCells,
+      materialRenderers,
+    } from '@jsonforms/material-renderers';
+    import $RefParser from '@apidevtools/json-schema-ref-parser';
+    // or
+    import JsonRefs from 'json-refs';
+
+    import mySchemaWithReferences from './myschema.json';
+
+    function App() {
+      const [data, setData] = useState(initialData);
+      const [resolvedSchema, setSchema] = useState();
+
+      useEffect(() => {
+        // Using @apidevtools/json-schema-ref-parser
+        $RefParser
+          .dereference(mySchemaWithReferences)
+          .then((res) => setSchema(res));
+        
+        // OR using json-refs
+        JsonRefs.resolveRefs(mySchemaWithReferences)
+          .then((res) => setSchema(res.resolved));
+      }, []);
+
+      if (resolvedSchema === undefined) {
+        return <div>Loading...</div>;
+      }
+
+      return (
+        <JsonForms
+          schema={resolvedSchema}
+          uischema={uischema}
+          data={data}
+          renderers={materialRenderers}
+          cells={materialCells}
+          onChange={({ data, _errors }) => setData(data)}
+        />
+      );
+    }
+    ```
+  </Step>
+</Steps>
+
+For more information, see the [JSON Schema](/concepts/json-schema) documentation.
+
+### Update to Material UI v5 in React Material
+
+<Warning>
+  Material UI was updated from version 4 to version 5, which includes many breaking changes.
+</Warning>
+
+To update your application, see the official [Material UI v4 to v5 Migration Guide](https://mui.com/guides/migration-v4/).
+
+### Removal of React Material Extended Renderer Set
+
+The separate 'extended' renderer set has been removed. Material UI Lab is now a required dependency as it contains date and time pickers.
+
+**Migration Steps:**
+
+<Steps>
+  <Step title="Update imports">
+    If you were using the extended renderer set, switch to the normal renderer set:
+
+    ```ts
+    // Before
+    import { materialRenderers } from '@jsonforms/material-renderers/extended';
+
+    // After
+    import { materialRenderers } from '@jsonforms/material-renderers';
+    ```
+
+    There should be no behavior changes.
+  </Step>
+
+  <Step title="Ensure @mui/lab is installed">
+    ```bash
+    npm install @mui/lab
+    ```
+  </Step>
+</Steps>
+
+### Removal of Class Components in React Material
+
+All React Material class components were refactored to functional components.
+
+<Warning>
+  If you extended any base renderers in your custom renderers, you'll need to refactor them to use functional components.
+</Warning>
+
+Review your custom renderers that extend JSON Forms base renderers and refactor them to functional components using React hooks.
+
+### Scopable Interface Change
+
+The `scope` attribute in `Scopable` is now optional.
+
+**Migration Steps:**
+
+- Use `Scoped` instead of `Scopable` when you need non-optional scopes
+- The utility function `fromScopable` was renamed to `fromScoped`
+
+```ts
+// Before
+import { Scopable, fromScopable } from '@jsonforms/core';
+
+// After  
+import { Scoped, fromScoped } from '@jsonforms/core';
+// OR keep using Scopable if scope is optional in your use case
+```
+
+### Date Picker Localization in Angular Material
+
+Date Picker in Angular Material will now use the global configuration of your Angular Material application.
+
+Ensure your Angular Material locale configuration is set up correctly for date pickers to display in the expected format and language.
+
+### React Prop Mapping Functions
+
+The function `ctxToJsonFormsDispatchProps` was renamed to `ctxToJsonFormsRendererProps` to better reflect its purpose.
+
+```ts
+// Before
+import { ctxToJsonFormsDispatchProps } from '@jsonforms/react';
+
+// After
+import { ctxToJsonFormsRendererProps } from '@jsonforms/react';
+```

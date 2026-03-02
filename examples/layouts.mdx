@@ -1,0 +1,327 @@
+---
+title: Layouts
+description: Organize your forms with VerticalLayout, HorizontalLayout, Group, and Categorization elements
+---
+
+Layouts control how form elements are arranged and grouped. JSON Forms provides several layout types to organize your forms effectively.
+
+## Vertical Layout
+
+Stacks elements vertically, one below the other.
+
+<Tabs>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "label": "Name",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Control",
+          "label": "Birth Date",
+          "scope": "#/properties/birthDate"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Result">
+    Fields are stacked vertically with full width.
+  </Tab>
+</Tabs>
+
+## Horizontal Layout
+
+Arranges elements side by side in a row.
+
+<Tabs>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "HorizontalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "label": "Name",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Control",
+          "label": "Birth Date",
+          "scope": "#/properties/birthDate"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Result">
+    Fields are arranged horizontally in a single row, each taking equal width.
+  </Tab>
+</Tabs>
+
+## Group Layout
+
+Groups related elements together with a visual container and label.
+
+<Tabs>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "Group",
+      "label": "My Group",
+      "elements": [
+        {
+          "type": "Control",
+          "label": "Name",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Control",
+          "label": "Birth Date",
+          "scope": "#/properties/birthDate"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Result">
+    Elements are wrapped in a visual group with the label "My Group" as a header.
+  </Tab>
+</Tabs>
+
+## Nested Layouts
+
+Combine multiple layout types to create complex form structures.
+
+<Tabs>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "Group",
+      "label": "My Group",
+      "elements": [
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "VerticalLayout",
+              "elements": [
+                {
+                  "type": "Control",
+                  "label": "Name",
+                  "scope": "#/properties/name"
+                },
+                {
+                  "type": "Control",
+                  "label": "Birth Date",
+                  "scope": "#/properties/birthDate"
+                }
+              ]
+            },
+            {
+              "type": "VerticalLayout",
+              "elements": [
+                {
+                  "type": "Control",
+                  "label": "Name",
+                  "scope": "#/properties/name"
+                },
+                {
+                  "type": "Control",
+                  "label": "Birth Date",
+                  "scope": "#/properties/birthDate"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Result">
+    Two vertical columns side by side within a group container.
+  </Tab>
+</Tabs>
+
+## Categorization
+
+Create multi-step or tabbed forms with categorization. Each category becomes a separate tab or step.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "type": "object",
+      "properties": {
+        "firstName": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Please enter your first name"
+        },
+        "secondName": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Please enter your second name"
+        },
+        "birthDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "nationality": {
+          "type": "string",
+          "enum": ["DE", "IT", "JP", "US", "RU", "Other"]
+        },
+        "provideAddress": {
+          "type": "boolean"
+        },
+        "address": {
+          "type": "object",
+          "properties": {
+            "street": { "type": "string" },
+            "streetNumber": { "type": "string" },
+            "city": { "type": "string" },
+            "postalCode": { "type": "string", "maxLength": 5 }
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "Categorization",
+      "elements": [
+        {
+          "type": "Category",
+          "label": "Basic",
+          "elements": [
+            {
+              "type": "HorizontalLayout",
+              "elements": [
+                {
+                  "type": "Control",
+                  "scope": "#/properties/firstName"
+                },
+                {
+                  "type": "Control",
+                  "scope": "#/properties/secondName"
+                }
+              ]
+            },
+            {
+              "type": "HorizontalLayout",
+              "elements": [
+                {
+                  "type": "Control",
+                  "scope": "#/properties/birthDate"
+                },
+                {
+                  "type": "Control",
+                  "scope": "#/properties/nationality"
+                }
+              ]
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/provideAddress"
+            }
+          ]
+        },
+        {
+          "type": "Category",
+          "label": "Address",
+          "elements": [
+            {
+              "type": "HorizontalLayout",
+              "elements": [
+                {
+                  "type": "Control",
+                  "scope": "#/properties/address/properties/street"
+                },
+                {
+                  "type": "Control",
+                  "scope": "#/properties/address/properties/streetNumber"
+                }
+              ]
+            },
+            {
+              "type": "HorizontalLayout",
+              "elements": [
+                {
+                  "type": "Control",
+                  "scope": "#/properties/address/properties/city"
+                },
+                {
+                  "type": "Control",
+                  "scope": "#/properties/address/properties/postalCode"
+                }
+              ]
+            }
+          ],
+          "rule": {
+            "effect": "SHOW",
+            "condition": {
+              "scope": "#/properties/provideAddress",
+              "schema": { "const": true }
+            }
+          }
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Result">
+    A tabbed interface with "Basic" and "Address" categories. The Address category is conditionally shown based on the provideAddress checkbox.
+  </Tab>
+</Tabs>
+
+## Layout Features
+
+### Label Element
+
+Add descriptive text between form sections:
+
+```json
+{
+  "type": "Label",
+  "text": "Additional Information"
+}
+```
+
+### Conditional Categories
+
+Use rules to show/hide categories based on form data:
+
+```json
+{
+  "type": "Category",
+  "label": "Address",
+  "elements": [...],
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "scope": "#/properties/provideAddress",
+      "schema": { "const": true }
+    }
+  }
+}
+```
+
+## Best Practices
+
+- Use **VerticalLayout** for forms with many fields or mobile-first designs
+- Use **HorizontalLayout** to group related fields that naturally fit together (e.g., first name and last name)
+- Use **Group** to visually separate sections of a long form
+- Use **Categorization** for multi-step wizards or complex forms with distinct sections
+- Nest layouts to create responsive, organized forms
+
+## Next Steps
+
+- Learn about [Arrays](/examples/arrays) for handling lists
+- Explore [Complex Schemas](/examples/complex-schemas) for conditional logic and advanced patterns

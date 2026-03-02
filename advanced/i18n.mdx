@@ -1,0 +1,488 @@
+---
+title: Internationalization (i18n)
+description: Localize your JSON Forms with multi-language support for labels, errors, and messages
+---
+
+## Overview
+
+JSON Forms provides a comprehensive internationalization (i18n) system that allows you to translate labels, error messages, array controls, and other UI text into multiple languages.
+
+## Translator Function
+
+The core of the i18n system is the `Translator` function:
+
+```typescript
+export type Translator = (
+  id: string,
+  defaultMessage: string | undefined,
+  context?: any
+) => string | undefined;
+```
+
+### Default Translator
+
+The default translator simply returns the default message:
+
+```typescript
+export const defaultTranslator: Translator = (
+  _id: string,
+  defaultMessage: string | undefined
+) => defaultMessage;
+```
+
+## Setting Up i18n
+
+Provide your translator to JSON Forms:
+
+```typescript
+import { JsonForms } from '@jsonforms/react';
+
+const myTranslator = (id: string, defaultMessage: string) => {
+  // Your translation logic
+  return translations[id] || defaultMessage;
+};
+
+function App() {
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={renderers}
+      i18n={{ translate: myTranslator }}
+    />
+  );
+}
+```
+
+## i18n Keys
+
+JSON Forms generates i18n keys using a prefix-based system.
+
+### Key Generation
+
+```typescript
+export const getI18nKey = (
+  schema: i18nJsonSchema | undefined,
+  uischema: unknown | undefined,
+  path: string | undefined,
+  key: string
+): string => {
+  return `${getI18nKeyPrefix(schema, uischema, path)}.${key}`;
+};
+
+export const getI18nKeyPrefix = (
+  schema: i18nJsonSchema | undefined,
+  uischema: unknown | undefined,
+  path: string | undefined
+): string => {
+  return (
+    getI18nKeyPrefixBySchema(schema, uischema) ??
+    transformPathToI18nPrefix(path)
+  );
+};
+```
+
+### Path to Prefix Transformation
+
+The path is transformed to remove array indices:
+
+```typescript
+export const transformPathToI18nPrefix = (path: string): string => {
+  return (
+    path
+      ?.split('.')
+      .filter((segment) => !/^\d+$/.test(segment))
+      .join('.') || 'root'
+  );
+};
+```
+
+Examples:
+- `"user.address.street"` → `"user.address.street"`
+- `"users.0.name"` → `"users.name"`
+- `""` → `"root"`
+
+## Internationalization Properties
+
+### i18n Property on Schema
+
+Add an `i18n` property to your JSON Schema:
+
+```json
+{
+  "type": "object",
+  "i18n": "user",
+  "properties": {
+    "firstName": {
+      "type": "string",
+      "i18n": "user.firstName"
+    }
+  }
+}
+```
+
+### i18n Property on UI Schema
+
+```typescript
+export interface Internationalizable {
+  i18n?: string;
+}
+```
+
+Example:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/firstName",
+  "i18n": "user.firstName"
+}
+```
+
+### Checking if Internationalized
+
+```typescript
+export const isInternationalized = (
+  element: unknown
+): element is Required<Internationalizable> =>
+  typeof element === 'object' &&
+  element !== null &&
+  typeof (element as Internationalizable).i18n === 'string';
+```
+
+## Label Translation
+
+### Control Labels
+
+For a control at path `user.firstName` with i18n prefix `user.firstName`, JSON Forms looks for:
+
+1. `user.firstName.label`
+2. Falls back to the `label` property in the UI schema
+3. Falls back to the property name
+
+### UI Schema Element Labels
+
+```typescript
+export const deriveLabelForUISchemaElement = (
+  uischema: Labelable<boolean>,
+  t: Translator
+): string | undefined => {
+  if (uischema.label === false) {
+    return undefined;
+  }
+  if (
+    (uischema.label === undefined ||
+      uischema.label === null ||
+      uischema.label === true) &&
+    !isInternationalized(uischema)
+  ) {
+    return undefined;
+  }
+  const stringifiedLabel =
+    typeof uischema.label === 'string'
+      ? uischema.label
+      : JSON.stringify(uischema.label);
+  const i18nKeyPrefix = getI18nKeyPrefixBySchema(undefined, uischema);
+  const i18nKey =
+    typeof i18nKeyPrefix === 'string'
+      ? `${i18nKeyPrefix}.label`
+      : stringifiedLabel;
+  return t(i18nKey, stringifiedLabel, { uischema: uischema });
+};
+```
+
+## Error Message Translation
+
+JSON Forms provides customizable error message translation:
+
+```typescript
+export type ErrorTranslator = (
+  error: ErrorObject,
+  translate: Translator,
+  uischema?: UISchemaElement
+) => string;
+```
+
+### Default Error Translator
+
+```typescript
+export const defaultErrorTranslator: ErrorTranslator = (error, t, uischema) => {
+  // Check whether there is a special keyword message
+  const i18nKey = getI18nKey(
+    error.parentSchema,
+    uischema,
+    getControlPath(error),
+    `error.${error.keyword}`
+  );
+  const specializedKeywordMessage = t(i18nKey, undefined, { error });
+  if (specializedKeywordMessage !== undefined) {
+    return specializedKeywordMessage;
+  }
+
+  // Check whether there is a generic keyword message
+  const genericKeywordMessage = t(`error.${error.keyword}`, undefined, {
+    error,
+  });
+  if (genericKeywordMessage !== undefined) {
+    return genericKeywordMessage;
+  }
+
+  // Check whether there is a customization for the default message
+  const messageCustomization = t(error.message, undefined, { error });
+  if (messageCustomization !== undefined) {
+    return messageCustomization;
+  }
+
+  // Rewrite required property messages
+  if (
+    error.keyword === 'required' &&
+    error.message?.startsWith('must have required property')
+  ) {
+    return t('is a required property', 'is a required property', { error });
+  }
+
+  return error.message;
+};
+```
+
+### Error Translation Keys
+
+For a field at path `user.email` with error keyword `format`:
+
+1. Specific field error: `user.email.error.format`
+2. Generic error: `error.format`
+3. Custom message: The error message itself as a key
+4. Fallback: AJV's default error message
+
+## Array Translations
+
+Array controls require translations for buttons and messages:
+
+```typescript
+export enum ArrayTranslationEnum {
+  addTooltip = 'addTooltip',
+  addAriaLabel = 'addAriaLabel',
+  removeTooltip = 'removeTooltip',
+  upAriaLabel = 'upAriaLabel',
+  downAriaLabel = 'downAriaLabel',
+  noSelection = 'noSelection',
+  removeAriaLabel = 'removeAriaLabel',
+  noDataMessage = 'noDataMessage',
+  deleteDialogTitle = 'deleteDialogTitle',
+  deleteDialogMessage = 'deleteDialogMessage',
+  deleteDialogAccept = 'deleteDialogAccept',
+  deleteDialogDecline = 'deleteDialogDecline',
+  up = 'up',
+  down = 'down',
+}
+
+export type ArrayTranslations = {
+  [key in ArrayTranslationEnum]?: string;
+};
+```
+
+### Default Array Translations
+
+```typescript
+export const arrayDefaultTranslations: ArrayDefaultTranslation[] = [
+  {
+    key: ArrayTranslationEnum.addTooltip,
+    default: (input) => (input ? `Add to ${input}` : 'Add'),
+  },
+  {
+    key: ArrayTranslationEnum.addAriaLabel,
+    default: (input) => (input ? `Add to ${input} button` : 'Add button'),
+  },
+  { key: ArrayTranslationEnum.removeTooltip, default: () => 'Delete' },
+  { key: ArrayTranslationEnum.removeAriaLabel, default: () => 'Delete button' },
+  { key: ArrayTranslationEnum.upAriaLabel, default: () => 'Move item up' },
+  { key: ArrayTranslationEnum.up, default: () => 'Up' },
+  { key: ArrayTranslationEnum.down, default: () => 'Down' },
+  { key: ArrayTranslationEnum.downAriaLabel, default: () => 'Move item down' },
+  { key: ArrayTranslationEnum.noDataMessage, default: () => 'No data' },
+  { key: ArrayTranslationEnum.noSelection, default: () => 'No selection' },
+  {
+    key: ArrayTranslationEnum.deleteDialogTitle,
+    default: () => 'Confirm Deletion',
+  },
+  {
+    key: ArrayTranslationEnum.deleteDialogMessage,
+    default: () => 'Are you sure you want to delete the selected entry?',
+  },
+  { key: ArrayTranslationEnum.deleteDialogAccept, default: () => 'Yes' },
+  { key: ArrayTranslationEnum.deleteDialogDecline, default: () => 'No' },
+];
+```
+
+### Getting Array Translations
+
+```typescript
+export const getArrayTranslations = (
+  t: Translator,
+  defaultTranslations: ArrayDefaultTranslation[],
+  i18nKeyPrefix: string,
+  label: string
+): ArrayTranslations => {
+  const translations: ArrayTranslations = {};
+  defaultTranslations.forEach((controlElement) => {
+    const key = addI18nKeyToPrefix(i18nKeyPrefix, controlElement.key);
+    translations[controlElement.key] = t(key, controlElement.default(label));
+  });
+  return translations;
+};
+```
+
+## Complete Translation Example
+
+### Translation Object
+
+```typescript
+const translations = {
+  en: {
+    // Labels
+    'user.firstName.label': 'First Name',
+    'user.lastName.label': 'Last Name',
+    'user.email.label': 'Email Address',
+    
+    // Errors
+    'error.required': 'This field is required',
+    'error.minLength': 'Must be at least {{limit}} characters',
+    'error.format': 'Invalid format',
+    'user.email.error.format': 'Please enter a valid email address',
+    
+    // Array controls
+    'users.addTooltip': 'Add User',
+    'users.removeTooltip': 'Remove User',
+    'users.deleteDialogTitle': 'Delete User',
+    'users.deleteDialogMessage': 'Are you sure you want to remove this user?',
+  },
+  de: {
+    // Labels
+    'user.firstName.label': 'Vorname',
+    'user.lastName.label': 'Nachname',
+    'user.email.label': 'E-Mail-Adresse',
+    
+    // Errors
+    'error.required': 'Dieses Feld ist erforderlich',
+    'error.minLength': 'Muss mindestens {{limit}} Zeichen lang sein',
+    'error.format': 'Ungültiges Format',
+    'user.email.error.format': 'Bitte geben Sie eine gültige E-Mail-Adresse ein',
+    
+    // Array controls
+    'users.addTooltip': 'Benutzer hinzufügen',
+    'users.removeTooltip': 'Benutzer entfernen',
+    'users.deleteDialogTitle': 'Benutzer löschen',
+    'users.deleteDialogMessage': 'Möchten Sie diesen Benutzer wirklich entfernen?',
+  },
+};
+```
+
+### Translator Implementation
+
+```typescript
+import { Translator } from '@jsonforms/core';
+
+const createTranslator = (locale: string): Translator => {
+  return (id: string, defaultMessage: string | undefined, context?: any) => {
+    const message = translations[locale]?.[id];
+    
+    if (!message) {
+      return defaultMessage;
+    }
+    
+    // Simple template replacement
+    if (context) {
+      return message.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+        return context[key] ?? context.error?.params?.[key] ?? '';
+      });
+    }
+    
+    return message;
+  };
+};
+
+function App() {
+  const [locale, setLocale] = useState('en');
+  const translator = createTranslator(locale);
+  
+  return (
+    <>
+      <select value={locale} onChange={(e) => setLocale(e.target.value)}>
+        <option value="en">English</option>
+        <option value="de">Deutsch</option>
+      </select>
+      
+      <JsonForms
+        schema={schema}
+        uischema={uischema}
+        data={data}
+        renderers={renderers}
+        i18n={{ translate: translator }}
+      />
+    </>
+  );
+}
+```
+
+## Integration with i18n Libraries
+
+### react-i18next
+
+```typescript
+import { useTranslation } from 'react-i18next';
+import { JsonForms } from '@jsonforms/react';
+
+function App() {
+  const { t } = useTranslation();
+  
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={renderers}
+      i18n={{ translate: t }}
+    />
+  );
+}
+```
+
+### react-intl
+
+```typescript
+import { useIntl } from 'react-intl';
+import { JsonForms } from '@jsonforms/react';
+
+function App() {
+  const intl = useIntl();
+  
+  const translator = (id: string, defaultMessage: string) => {
+    return intl.formatMessage(
+      { id, defaultMessage },
+      { defaultMessage }
+    );
+  };
+  
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={renderers}
+      i18n={{ translate: translator }}
+    />
+  );
+}
+```
+
+## Best Practices
+
+1. **Use consistent key prefixes**: Organize your translation keys with consistent prefixes
+2. **Provide defaults**: Always provide default messages for graceful fallback
+3. **Context in templates**: Use the context parameter for dynamic values in error messages
+4. **Test all languages**: Ensure all translations are present and correct
+5. **Document key structure**: Maintain documentation of your i18n key structure
+6. **Leverage existing libraries**: Use established i18n libraries like react-i18next
+7. **Extract to files**: Keep translations in separate files for maintainability
+8. **Consider pluralization**: Handle singular/plural forms appropriately

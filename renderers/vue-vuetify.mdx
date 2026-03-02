@@ -1,0 +1,329 @@
+---
+title: Vue Vuetify Renderers
+description: Vuetify renderer set for Vue 3 applications with Material Design components and comprehensive form controls
+---
+
+The Vue Vuetify renderer set provides a complete set of renderers for Vue 3 applications using Vuetify 3 components. This package includes controls, layouts, and complex renderers built on top of Vuetify's Material Design component framework.
+
+## Installation
+
+```bash
+npm install @jsonforms/vue-vuetify
+```
+
+### Peer Dependencies
+
+The Vue Vuetify renderer set requires the following peer dependencies:
+
+```bash
+npm install @jsonforms/core @jsonforms/vue vue@3 vuetify@3 dayjs maska ajv lodash
+```
+
+## Setup
+
+### 1. Configure Vuetify
+
+First, set up Vuetify in your Vue application:
+
+```javascript
+// main.js
+import { createApp } from 'vue';
+import App from './App.vue';
+import { createVuetify } from 'vuetify';
+import 'vuetify/styles';
+import '@mdi/font/css/materialdesignicons.css';
+
+const vuetify = createVuetify();
+
+const app = createApp(App);
+app.use(vuetify);
+app.mount('#app');
+```
+
+### 2. Import Renderers
+
+```vue
+<template>
+  <v-app>
+    <v-main>
+      <v-container>
+        <json-forms
+          :data="data"
+          :schema="schema"
+          :uischema="uischema"
+          :renderers="renderers"
+          @change="onChange"
+        />
+      </v-container>
+    </v-main>
+  </v-app>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { JsonForms } from '@jsonforms/vue';
+import { vuetifyRenderers } from '@jsonforms/vue-vuetify';
+
+const renderers = vuetifyRenderers;
+const data = ref({});
+const schema = { /* your schema */ };
+const uischema = { /* your uischema */ };
+
+const onChange = (event) => {
+  data.value = event.data;
+};
+</script>
+```
+
+## Available Renderer Sets
+
+The package exports two renderer sets:
+
+### Standard Renderers
+
+```javascript
+import { vuetifyRenderers } from '@jsonforms/vue-vuetify';
+```
+
+Includes all standard renderers for common use cases.
+
+### Extended Renderers
+
+```javascript
+import { extendedVuetifyRenderers } from '@jsonforms/vue-vuetify';
+```
+
+Includes additional specialized renderers on top of the standard set.
+
+## Available Renderers
+
+### Control Renderers
+
+Control renderers handle individual form inputs:
+
+- **AnyOfStringOrEnumControlRenderer** - Control for anyOf string/enum schemas
+- **BooleanControlRenderer** - Checkbox for boolean values
+- **BooleanToggleControlRenderer** - Toggle switch for boolean values
+- **DateControlRenderer** - Date picker using Vuetify date picker
+- **DateTimeControlRenderer** - DateTime picker
+- **EnumControlRenderer** - Select dropdown for enum values
+- **IntegerControlRenderer** - Integer number input
+- **MultiStringControlRenderer** - Textarea for multi-line strings
+- **NumberControlRenderer** - Decimal number input
+- **OneOfEnumControlRenderer** - Select for oneOf with enum
+- **OneOfRadioGroupControlRenderer** - Radio group for oneOf schemas
+- **PasswordControlRenderer** - Password input with visibility toggle
+- **RadioGroupControlRenderer** - Radio button group
+- **SliderControlRenderer** - Slider for numeric ranges
+- **StringControlRenderer** - Text input for strings
+- **StringMaskControlRenderer** - Masked input using Maska
+- **TimeControlRenderer** - Time picker
+
+### Layout Renderers
+
+Layout renderers organize form structure:
+
+- **VerticalLayoutRenderer** - Arranges elements vertically (default)
+- **HorizontalLayoutRenderer** - Arranges elements horizontally
+- **GroupRenderer** - Groups elements with Vuetify card styling
+- **ArrayLayoutRenderer** - Array layout with add/remove functionality
+- **CategorizationRenderer** - Tab-based categorization using Vuetify tabs
+- **CategorizationStepperRenderer** - Stepper-based categorization
+
+### Complex Renderers
+
+Complex renderers handle advanced schema features:
+
+- **AllOfRenderer** - AllOf schema composition
+- **AnyOfRenderer** - AnyOf schema alternatives
+- **ArrayControlRenderer** - Array input with add/remove/reorder
+- **EnumArrayRenderer** - Array of enum values with checkboxes
+- **ObjectRenderer** - Nested object structures
+- **OneOfRenderer** - OneOf schema selection with dropdown
+- **OneOfTabRenderer** - OneOf schema selection with tabs
+- **MixedRenderer** - Handles mixed type schemas
+
+### Additional Renderers
+
+From the `additional` module:
+
+- Additional specialized renderers for specific use cases
+
+### Extended Renderers
+
+From the `extended` module:
+
+- Specialized renderers for advanced scenarios
+
+### Component Utilities
+
+- **ControlWrapper** - Wrapper component for controls that handles labels, validation messages, and Vuetify styling
+
+## Renderer Structure
+
+Each renderer is exported both as a component and as an entry object:
+
+```javascript
+// From StringControlRenderer.entry.ts
+export const entry = {
+  renderer: StringControlRenderer,
+  tester: rankWith(1, isStringControl)
+};
+```
+
+## Customization
+
+You can customize Vuetify renderers by:
+
+1. **Using Vuetify Theme** - Apply your Vuetify theme to style all renderers
+2. **Custom Renderers** - Create custom Vue components that extend the Vuetify renderers
+3. **Custom Testers** - Override default testers to change when renderers are applied
+
+### Example: Custom Vuetify Theme
+
+```javascript
+// vuetify.js
+import { createVuetify } from 'vuetify';
+
+export default createVuetify({
+  theme: {
+    defaultTheme: 'myCustomTheme',
+    themes: {
+      myCustomTheme: {
+        dark: false,
+        colors: {
+          primary: '#1976D2',
+          secondary: '#424242',
+          accent: '#82B1FF',
+          error: '#FF5252',
+          info: '#2196F3',
+          success: '#4CAF50',
+          warning: '#FB8C00',
+        },
+      },
+    },
+  },
+});
+```
+
+### Example: Custom Renderer
+
+```vue
+<template>
+  <control-wrapper
+    v-bind="controlWrapper"
+    :styles="styles"
+  >
+    <v-text-field
+      :id="control.id + '-input'"
+      :label="computedLabel"
+      :model-value="control.data"
+      :disabled="!control.enabled"
+      :error-messages="control.errors"
+      @update:model-value="onChange"
+      variant="outlined"
+      density="comfortable"
+      prepend-inner-icon="mdi-text"
+    />
+  </control-wrapper>
+</template>
+
+<script>
+import { defineComponent } from 'vue';
+import { rendererProps, useJsonFormsControl } from '@jsonforms/vue';
+import { ControlWrapper } from '@jsonforms/vue-vuetify';
+import { rankWith, isStringControl } from '@jsonforms/core';
+import { VTextField } from 'vuetify/components';
+
+const controlRenderer = defineComponent({
+  name: 'CustomStringRenderer',
+  components: {
+    ControlWrapper,
+    VTextField
+  },
+  props: {
+    ...rendererProps()
+  },
+  setup(props) {
+    return useJsonFormsControl(props);
+  },
+  computed: {
+    computedLabel() {
+      return this.control.label;
+    }
+  },
+  methods: {
+    onChange(value) {
+      this.handleChange(this.control.path, value);
+    }
+  }
+});
+
+export default controlRenderer;
+
+export const entry = {
+  renderer: controlRenderer,
+  tester: rankWith(5, isStringControl) // Higher rank than default
+};
+</script>
+```
+
+## Special Features
+
+### Masked Input
+
+The `StringMaskControlRenderer` uses the Maska library for input masking. Configure masks via UI schema options:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/phone",
+  "options": {
+    "mask": "(###) ###-####"
+  }
+}
+```
+
+### Password Input
+
+The `PasswordControlRenderer` provides a password input with a visibility toggle button.
+
+### Array Manipulation
+
+The `ArrayControlRenderer` provides full array manipulation capabilities:
+- Add items
+- Remove items
+- Reorder items (drag and drop)
+- Nested arrays
+
+## TypeScript Support
+
+The Vue Vuetify renderer set is written in TypeScript and includes full type definitions.
+
+## Material Design Icons
+
+Make sure to include Material Design Icons:
+
+```bash
+npm install @mdi/font
+```
+
+```javascript
+import '@mdi/font/css/materialdesignicons.css';
+```
+
+## Advantages
+
+- **Material Design** - Beautiful, consistent Material Design UI
+- **Vuetify 3** - Built for Vuetify 3 with Vue 3 Composition API
+- **Rich Components** - Comprehensive set of form controls
+- **Themeable** - Full Vuetify theming support
+- **Responsive** - Mobile-friendly responsive layouts
+- **Accessible** - Built-in accessibility features from Vuetify
+
+## Learn More
+
+- [Custom Renderers](/advanced/custom-renderers)
+- [Testers](/api/core/testers)
+- [Vuetify Documentation](https://vuetifyjs.com/)
+- [Vue 3 Documentation](https://vuejs.org/)

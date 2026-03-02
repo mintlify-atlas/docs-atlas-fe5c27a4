@@ -1,0 +1,398 @@
+---
+title: React Integration
+description: Integrate JSON Forms into your React application with hooks, context, and Redux support
+---
+
+# React Integration
+
+JSON Forms provides seamless React integration through the `@jsonforms/react` package, offering both a standalone component and Redux integration options.
+
+## Installation
+
+<Steps>
+  <Step title="Install Core Dependencies">
+    ```bash
+    npm install @jsonforms/core @jsonforms/react
+    ```
+  </Step>
+  
+  <Step title="Install Renderer Set">
+    Choose a renderer set for your UI framework:
+    
+    <CodeGroup>
+      ```bash Material-UI
+      npm install @jsonforms/material-renderers
+      ```
+      
+      ```bash Vanilla
+      npm install @jsonforms/vanilla-renderers
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Basic Usage
+
+### Standalone Component
+
+The `JsonForms` component provides a self-contained solution with internal state management:
+
+```tsx
+import { JsonForms } from '@jsonforms/react';
+import { materialRenderers, materialCells } from '@jsonforms/material-renderers';
+import { useState } from 'react';
+
+function App() {
+  const [data, setData] = useState({});
+  
+  const schema = {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      email: { type: 'string', format: 'email' }
+    },
+    required: ['name', 'email']
+  };
+  
+  const uischema = {
+    type: 'VerticalLayout',
+    elements: [
+      { type: 'Control', scope: '#/properties/name' },
+      { type: 'Control', scope: '#/properties/email' }
+    ]
+  };
+  
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={materialRenderers}
+      cells={materialCells}
+      onChange={({ data, errors }) => setData(data)}
+    />
+  );
+}
+```
+
+### JsonForms Component API
+
+The `JsonForms` component accepts the following props:
+
+```typescript
+interface JsonFormsInitStateProps {
+  // Required
+  renderers: JsonFormsRendererRegistryEntry[];
+  
+  // Core properties
+  data: any;
+  schema?: JsonSchema;
+  uischema?: UISchemaElement;
+  
+  // Optional configuration
+  cells?: JsonFormsCellRendererRegistryEntry[];
+  config?: any;
+  readonly?: boolean;
+  validationMode?: 'ValidateAndShow' | 'ValidateAndHide' | 'NoValidation';
+  ajv?: Ajv;
+  uischemas?: JsonFormsUISchemaRegistryEntry[];
+  i18n?: JsonFormsI18nState;
+  additionalErrors?: ErrorObject[];
+  middleware?: Middleware;
+}
+
+interface JsonFormsReactProps {
+  onChange?(state: { data: any; errors: ErrorObject[] }): void;
+  middleware?: Middleware;
+}
+```
+
+<Note>
+If `schema` is not provided, JSON Forms will automatically generate one from the `data`. Similarly, if `uischema` is not provided, a default UI schema will be generated.
+</Note>
+
+## React Hooks
+
+JSON Forms provides a comprehensive set of React hooks for building custom renderers and accessing the JSON Forms context.
+
+### useJsonForms Hook
+
+Access the complete JSON Forms state and dispatch:
+
+```tsx
+import { useJsonForms } from '@jsonforms/react';
+
+function CustomComponent() {
+  const { core, renderers, cells, config, dispatch } = useJsonForms();
+  
+  // Access current data
+  const currentData = core.data;
+  
+  // Dispatch changes
+  const handleUpdate = () => {
+    dispatch(Actions.update('path.to.field', newValue));
+  };
+  
+  return <div>{/* Your component */}</div>;
+}
+```
+
+### Context State Structure
+
+```typescript
+interface JsonFormsStateContext extends JsonFormsSubStates {
+  core: JsonFormsCore;           // Data, schema, uischema, errors
+  renderers: JsonFormsRendererRegistryEntry[];
+  cells?: JsonFormsCellRendererRegistryEntry[];
+  config?: any;
+  uischemas?: JsonFormsUISchemaRegistryEntry[];
+  readonly?: boolean;
+  i18n?: JsonFormsI18nState;
+  dispatch?: Dispatch<CoreActions>;
+}
+```
+
+## Higher-Order Components
+
+For class components or advanced use cases, JSON Forms provides HOCs to connect components to the JSON Forms state:
+
+### Control HOCs
+
+```tsx
+import { withJsonFormsControlProps } from '@jsonforms/react';
+import type { ControlProps } from '@jsonforms/react';
+
+function MyControl({ data, handleChange, path, errors }: ControlProps) {
+  return (
+    <input
+      value={data || ''}
+      onChange={(e) => handleChange(path, e.target.value)}
+    />
+  );
+}
+
+export default withJsonFormsControlProps(MyControl);
+```
+
+### Available HOCs
+
+<Tabs>
+  <Tab title="Control HOCs">
+    - `withJsonFormsControlProps` - Standard controls
+    - `withJsonFormsEnumProps` - Enum/select controls
+    - `withJsonFormsOneOfEnumProps` - OneOf enum controls
+    - `withJsonFormsMultiEnumProps` - Multi-select controls
+    - `withJsonFormsArrayControlProps` - Array controls
+  </Tab>
+  
+  <Tab title="Layout HOCs">
+    - `withJsonFormsLayoutProps` - Layouts (Vertical, Horizontal, Group)
+    - `withJsonFormsArrayLayoutProps` - Array layouts
+  </Tab>
+  
+  <Tab title="Other HOCs">
+    - `withJsonFormsCellProps` - Table cells
+    - `withJsonFormsEnumCellProps` - Enum cells
+    - `withJsonFormsRendererProps` - Generic renderers
+    - `withJsonFormsOneOfProps` - OneOf combinators
+    - `withJsonFormsAnyOfProps` - AnyOf combinators
+    - `withJsonFormsAllOfProps` - AllOf combinators
+  </Tab>
+</Tabs>
+
+## Redux Integration
+
+For applications already using Redux, JSON Forms provides Redux integration through the `@jsonforms/react` package.
+
+<Steps>
+  <Step title="Setup Redux Store">
+    Add the JSON Forms reducer to your Redux store:
+    
+    ```tsx
+    import { combineReducers, createStore } from 'redux';
+    import { jsonformsReducer } from '@jsonforms/react';
+    
+    const rootReducer = combineReducers({
+      jsonforms: jsonformsReducer()
+    });
+    
+    const store = createStore(rootReducer);
+    ```
+  </Step>
+  
+  <Step title="Initialize JSON Forms State">
+    Dispatch initialization actions:
+    
+    ```tsx
+    import { Actions } from '@jsonforms/core';
+    
+    store.dispatch(
+      Actions.init(data, schema, uischema, {
+        ajv: ajvInstance,
+        validationMode: 'ValidateAndShow'
+      })
+    );
+    
+    // Register renderers
+    store.dispatch(Actions.registerRenderers(materialRenderers));
+    ```
+  </Step>
+  
+  <Step title="Use JsonFormsReduxContext">
+    Wrap your app with the Redux context provider:
+    
+    ```tsx
+    import { Provider } from 'react-redux';
+    import { JsonFormsReduxContext } from '@jsonforms/react';
+    
+    function App() {
+      return (
+        <Provider store={store}>
+          <JsonFormsReduxContext>
+            <div>{/* Your components */}</div>
+          </JsonFormsReduxContext>
+        </Provider>
+      );
+    }
+    ```
+  </Step>
+</Steps>
+
+### Redux State Structure
+
+The `jsonformsReducer()` manages the following state:
+
+```typescript
+interface JsonFormsSubStates {
+  core: JsonFormsCore;           // Data, schema, uischema, validation
+  renderers: JsonFormsRendererRegistryEntry[];
+  cells: JsonFormsCellRendererRegistryEntry[];
+  config: any;
+  uischemas: JsonFormsUISchemaRegistryEntry[];
+  i18n: JsonFormsI18nState;
+  readonly?: boolean;
+}
+```
+
+### Custom Redux Reducers
+
+You can add additional reducers alongside JSON Forms:
+
+```tsx
+import { jsonformsReducer } from '@jsonforms/react';
+
+const customReducer = jsonformsReducer({
+  myCustomState: myCustomReducer,
+  anotherState: anotherReducer
+});
+
+const store = createStore(combineReducers({ jsonforms: customReducer }));
+```
+
+## Advanced Features
+
+### Middleware
+
+Intercept and modify actions before they update the state:
+
+```tsx
+import type { Middleware } from '@jsonforms/core';
+
+const loggingMiddleware: Middleware = (state, action, reducer) => {
+  console.log('Before:', state);
+  const newState = reducer(state, action);
+  console.log('After:', newState);
+  return newState;
+};
+
+<JsonForms
+  {...props}
+  middleware={loggingMiddleware}
+/>
+```
+
+### Custom Validation
+
+Provide a custom AJV instance for validation:
+
+```tsx
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+
+const ajv = new Ajv({
+  allErrors: true,
+  verbose: true,
+  strict: false
+});
+addFormats(ajv);
+
+// Add custom formats
+ajv.addFormat('custom-format', /^[A-Z]{3}$/);
+
+<JsonForms
+  {...props}
+  ajv={ajv}
+/>
+```
+
+### Internationalization
+
+Provide translations for labels and error messages:
+
+```tsx
+import type { Translator } from '@jsonforms/core';
+
+const germanTranslator: Translator = (key: string, defaultMessage: string) => {
+  const translations = {
+    'name': 'Name',
+    'email': 'E-Mail-Adresse'
+  };
+  return translations[key] || defaultMessage;
+};
+
+<JsonForms
+  {...props}
+  i18n={{
+    locale: 'de-DE',
+    translate: germanTranslator
+  }}
+/>
+```
+
+## Component Lifecycle
+
+The `JsonForms` component manages its internal state and automatically:
+
+1. **Initializes** the core state with provided data, schema, and uischema
+2. **Generates** missing schema/uischema from data if not provided
+3. **Validates** data on changes (debounced by 10ms)
+4. **Emits** `onChange` events with updated data and errors
+5. **Updates** when props change (schema, data, uischema, etc.)
+
+<Note>
+The `onChange` callback is debounced to handle rapid changes efficiently, especially important for scenarios like browser autofill.
+</Note>
+
+## TypeScript Support
+
+JSON Forms is written in TypeScript and exports all relevant types:
+
+```tsx
+import type {
+  ControlProps,
+  LayoutProps,
+  ArrayLayoutProps,
+  CellProps,
+  EnumCellProps,
+  JsonFormsInitStateProps,
+  JsonFormsReactProps,
+  TranslateProps
+} from '@jsonforms/react';
+```
+
+## Next Steps
+
+- Learn how to [create custom renderers](/advanced/custom-renderers)
+- Explore [Material-UI renderers](/renderers/material)
+- Understand [validation](/advanced/validation)
+- Configure [internationalization](/advanced/i18n)

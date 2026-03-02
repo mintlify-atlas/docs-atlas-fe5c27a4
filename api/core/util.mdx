@@ -1,0 +1,751 @@
+---
+title: Utilities API
+description: Helper functions for paths, schema resolution, validation, and more
+---
+
+Utility functions for common operations in JSON Forms including path manipulation, schema resolution, validation, and runtime evaluation.
+
+## Path Utilities
+
+### composePaths
+
+Compose two paths into a single path.
+
+```typescript
+function composePaths(path1: string, path2: string): string
+```
+
+<ParamField path="path1" type="string" required>
+  First path component
+</ParamField>
+
+<ParamField path="path2" type="string" required>
+  Second path component
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Combined path with proper separator handling
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { composePaths } from '@jsonforms/core';
+
+composePaths('person', 'address.city'); // 'person.address.city'
+composePaths('items', '[0]');           // 'items[0]'
+composePaths('', 'name');               // 'name'
+```
+
+### toDataPath
+
+Convert a schema path (JSON Pointer) to a data path.
+
+```typescript
+function toDataPath(schemaPath: string): string
+```
+
+<ParamField path="schemaPath" type="string" required>
+  Schema path in JSON Pointer format (e.g., '#/properties/person/properties/name')
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Data path in dot notation (e.g., 'person.name')
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { toDataPath } from '@jsonforms/core';
+
+toDataPath('#/properties/person/properties/address/properties/city');
+// Returns: 'person.address.city'
+
+toDataPath('#/properties/items/items/properties/name');
+// Returns: 'items.name'
+```
+
+### toDataPathSegments
+
+Convert schema path to an array of data path segments.
+
+```typescript
+function toDataPathSegments(schemaPath: string): string[]
+```
+
+<ParamField path="schemaPath" type="string" required>
+  Schema path in JSON Pointer format
+</ParamField>
+
+<ResponseField name="return" type="string[]">
+  Array of path segments
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { toDataPathSegments } from '@jsonforms/core';
+
+toDataPathSegments('#/properties/person/properties/name');
+// Returns: ['person', 'name']
+```
+
+### encode
+
+Encode a string segment for use in a JSON Pointer.
+
+```typescript
+function encode(segment: string): string
+```
+
+<ParamField path="segment" type="string" required>
+  String segment to encode
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Encoded segment with '~' → '~0' and '/' → '~1'
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { encode } from '@jsonforms/core';
+
+encode('foo/bar');  // 'foo~1bar'
+encode('~test');    // '~0test'
+```
+
+### decode
+
+Decode a JSON Pointer segment to its normal representation.
+
+```typescript
+function decode(pointerSegment: string): string
+```
+
+<ParamField path="pointerSegment" type="string" required>
+  Encoded JSON Pointer segment
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Decoded segment with '~1' → '/' and '~0' → '~'
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { decode } from '@jsonforms/core';
+
+decode('foo~1bar');  // 'foo/bar'
+decode('~0test');    // '~test'
+```
+
+### getPropPath
+
+Convert a dotted path to a schema properties path.
+
+```typescript
+function getPropPath(path: string): string
+```
+
+<ParamField path="path" type="string" required>
+  Dotted property path (e.g., 'person.address.city')
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Schema properties path (e.g., '/properties/person/properties/address/properties/city')
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { getPropPath } from '@jsonforms/core';
+
+getPropPath('person.address.city');
+// Returns: '/properties/person/properties/address/properties/city'
+```
+
+## Schema Resolution
+
+### resolveSchema
+
+Resolve a schema path to obtain a subschema.
+
+```typescript
+function resolveSchema(
+  schema: JsonSchema,
+  schemaPath: string,
+  rootSchema: JsonSchema
+): JsonSchema | undefined
+```
+
+<ParamField path="schema" type="JsonSchema" required>
+  Schema to start resolution from
+</ParamField>
+
+<ParamField path="schemaPath" type="string" required>
+  Schema path (JSON Pointer) to resolve
+</ParamField>
+
+<ParamField path="rootSchema" type="JsonSchema" required>
+  Root schema for $ref resolution
+</ParamField>
+
+<ResponseField name="return" type="JsonSchema | undefined">
+  Resolved subschema or undefined if not found
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { resolveSchema } from '@jsonforms/core';
+
+const schema = {
+  type: 'object',
+  properties: {
+    person: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' }
+      }
+    }
+  }
+};
+
+const nameSchema = resolveSchema(
+  schema,
+  '#/properties/person/properties/name',
+  schema
+);
+// Returns: { type: 'string' }
+```
+
+**Features:**
+- Resolves `$ref` references
+- Handles `oneOf`, `anyOf`, `allOf` combinators
+- Prevents infinite recursion with circular references
+- Falls back to combinator schemas when direct path fails
+
+### resolveData
+
+Resolve a data path to obtain a value.
+
+```typescript
+function resolveData(instance: any, dataPath: string): any
+```
+
+<ParamField path="instance" type="any" required>
+  Data object to resolve from
+</ParamField>
+
+<ParamField path="dataPath" type="string" required>
+  Data path in dot notation
+</ParamField>
+
+<ResponseField name="return" type="any">
+  Value at the path or undefined
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { resolveData } from '@jsonforms/core';
+
+const data = {
+  person: {
+    address: {
+      city: 'New York'
+    }
+  }
+};
+
+resolveData(data, 'person.address.city'); // 'New York'
+resolveData(data, 'person.phone');        // undefined
+```
+
+### findAllRefs
+
+Find all `$ref` references in a schema.
+
+```typescript
+function findAllRefs(
+  schema: JsonSchema,
+  result?: ReferenceSchemaMap,
+  resolveTuples?: boolean
+): ReferenceSchemaMap
+```
+
+<ParamField path="schema" type="JsonSchema" required>
+  Schema to search
+</ParamField>
+
+<ParamField path="result" type="ReferenceSchemaMap">
+  Initial result map (for recursion)
+</ParamField>
+
+<ParamField path="resolveTuples" type="boolean">
+  Whether to resolve tuple schemas (default: false)
+</ParamField>
+
+<ResponseField name="return" type="ReferenceSchemaMap">
+  Map of $ref strings to schema objects
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { findAllRefs } from '@jsonforms/core';
+
+const schema = {
+  type: 'object',
+  properties: {
+    person: { $ref: '#/definitions/Person' },
+    address: { $ref: '#/definitions/Address' }
+  },
+  definitions: {
+    Person: { type: 'object', properties: { name: { type: 'string' } } },
+    Address: { type: 'object', properties: { city: { type: 'string' } } }
+  }
+};
+
+const refs = findAllRefs(schema);
+// Returns: {
+//   '#/definitions/Person': { $ref: '#/definitions/Person' },
+//   '#/definitions/Address': { $ref: '#/definitions/Address' }
+// }
+```
+
+## Validation
+
+### createAjv
+
+Create a configured AJV instance for validation.
+
+```typescript
+function createAjv(options?: Options): Ajv
+```
+
+<ParamField path="options" type="Options">
+  AJV configuration options (merged with defaults)
+</ParamField>
+
+<ResponseField name="return" type="Ajv">
+  Configured AJV instance with formats support
+</ResponseField>
+
+**Default Options:**
+
+```typescript
+{
+  allErrors: true,
+  verbose: true,
+  strict: false,
+  addUsedSchema: false
+}
+```
+
+**Example:**
+
+```typescript
+import { createAjv } from '@jsonforms/core';
+
+const ajv = createAjv();
+const validator = ajv.compile(schema);
+```
+
+### validate
+
+Validate data using a compiled validator.
+
+```typescript
+function validate(
+  validator: ValidateFunction | undefined,
+  data: any
+): ErrorObject[]
+```
+
+<ParamField path="validator" type="ValidateFunction | undefined" required>
+  Compiled AJV validator or undefined
+</ParamField>
+
+<ParamField path="data" type="any" required>
+  Data to validate
+</ParamField>
+
+<ResponseField name="return" type="ErrorObject[]">
+  Array of validation errors (empty if valid or validator is undefined)
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { createAjv, validate } from '@jsonforms/core';
+
+const ajv = createAjv();
+const validator = ajv.compile({
+  type: 'object',
+  properties: {
+    name: { type: 'string', minLength: 3 }
+  },
+  required: ['name']
+});
+
+const errors1 = validate(validator, { name: 'Jo' });
+// errors1.length > 0 (minLength violation)
+
+const errors2 = validate(validator, { name: 'John' });
+// errors2.length === 0 (valid)
+```
+
+## Schema Utilities
+
+### isEnumSchema
+
+Test if a schema defines an enum.
+
+```typescript
+function isEnumSchema(schema: JsonSchema): boolean
+```
+
+<ParamField path="schema" type="JsonSchema" required>
+  Schema to test
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  True if schema has `enum` or `const` property
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { isEnumSchema } from '@jsonforms/core';
+
+isEnumSchema({ enum: ['a', 'b', 'c'] });  // true
+isEnumSchema({ const: 'value' });         // true
+isEnumSchema({ type: 'string' });         // false
+```
+
+### isOneOfEnumSchema
+
+Test if a schema defines an enum using oneOf with const values.
+
+```typescript
+function isOneOfEnumSchema(schema: JsonSchema): boolean
+```
+
+<ParamField path="schema" type="JsonSchema" required>
+  Schema to test
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  True if schema has `oneOf` where all items have `const`
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { isOneOfEnumSchema } from '@jsonforms/core';
+
+const schema = {
+  oneOf: [
+    { const: 'red', title: 'Red' },
+    { const: 'green', title: 'Green' },
+    { const: 'blue', title: 'Blue' }
+  ]
+};
+
+isOneOfEnumSchema(schema); // true
+```
+
+### getFirstPrimitiveProp
+
+Get the first primitive property from a schema.
+
+```typescript
+function getFirstPrimitiveProp(schema: unknown): string | undefined
+```
+
+<ParamField path="schema" type="unknown" required>
+  Schema to search
+</ParamField>
+
+<ResponseField name="return" type="string | undefined">
+  Name of first property with type 'string', 'number', or 'integer'
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { getFirstPrimitiveProp } from '@jsonforms/core';
+
+const schema = {
+  type: 'object',
+  properties: {
+    id: { type: 'number' },
+    nested: { type: 'object' },
+    name: { type: 'string' }
+  }
+};
+
+getFirstPrimitiveProp(schema); // 'id'
+```
+
+## Label Utilities
+
+### createLabelDescriptionFrom
+
+Create a label description from a control element.
+
+```typescript
+function createLabelDescriptionFrom(
+  withLabel: ControlElement,
+  schema?: JsonSchema
+): LabelDescription
+```
+
+<ParamField path="withLabel" type="ControlElement" required>
+  Control element that may have label configuration
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema">
+  Schema to derive label from if not explicitly set
+</ParamField>
+
+<ResponseField name="return" type="LabelDescription">
+  Object with `text` and `show` properties
+</ResponseField>
+
+**Label Resolution Priority:**
+
+1. `label.text` if label is an object
+2. `label` if label is a string
+3. `schema.title` if available
+4. Derived from scope (last segment, converted to start case)
+
+**Example:**
+
+```typescript
+import { createLabelDescriptionFrom } from '@jsonforms/core';
+
+// String label
+const label1 = createLabelDescriptionFrom(
+  { type: 'Control', scope: '#/properties/name', label: 'Full Name' }
+);
+// { text: 'Full Name', show: true }
+
+// Object label
+const label2 = createLabelDescriptionFrom(
+  {
+    type: 'Control',
+    scope: '#/properties/name',
+    label: { text: 'Name', show: false }
+  }
+);
+// { text: 'Name', show: false }
+
+// Derived from schema
+const label3 = createLabelDescriptionFrom(
+  { type: 'Control', scope: '#/properties/firstName' },
+  { title: 'First Name', type: 'string' }
+);
+// { text: 'First Name', show: true }
+
+// Derived from scope
+const label4 = createLabelDescriptionFrom(
+  { type: 'Control', scope: '#/properties/firstName' }
+);
+// { text: 'First Name', show: true }
+```
+
+### createCleanLabel
+
+Create a clean label from a string by converting to start case.
+
+```typescript
+function createCleanLabel(label: string): string
+```
+
+<ParamField path="label" type="string" required>
+  Label string to clean
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Start case version of the label
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { createCleanLabel } from '@jsonforms/core';
+
+createCleanLabel('first_name');     // 'First Name'
+createCleanLabel('emailAddress');   // 'Email Address'
+```
+
+## Runtime Evaluation
+
+### isVisible
+
+Evaluate if a UI schema element is visible based on rules.
+
+```typescript
+function isVisible(
+  uischema: UISchemaElement,
+  data: any,
+  path?: string,
+  ajv: Ajv,
+  config: unknown
+): boolean
+```
+
+<ParamField path="uischema" type="UISchemaElement" required>
+  UI schema element with potential rule
+</ParamField>
+
+<ParamField path="data" type="any" required>
+  Current form data
+</ParamField>
+
+<ParamField path="path" type="string">
+  Current data path
+</ParamField>
+
+<ParamField path="ajv" type="Ajv" required>
+  AJV instance for schema-based conditions
+</ParamField>
+
+<ParamField path="config" type="unknown" required>
+  Form configuration
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  True if element should be visible
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { isVisible, createAjv } from '@jsonforms/core';
+
+const uischema = {
+  type: 'Control',
+  scope: '#/properties/city',
+  rule: {
+    effect: 'SHOW',
+    condition: {
+      scope: '#/properties/hasAddress',
+      schema: { const: true }
+    }
+  }
+};
+
+const ajv = createAjv();
+
+isVisible(uischema, { hasAddress: true }, '', ajv, {});  // true
+isVisible(uischema, { hasAddress: false }, '', ajv, {}); // false
+```
+
+### isEnabled
+
+Evaluate if a UI schema element is enabled based on rules.
+
+```typescript
+function isEnabled(
+  uischema: UISchemaElement,
+  data: any,
+  path?: string,
+  ajv: Ajv,
+  config: unknown
+): boolean
+```
+
+<ParamField path="uischema" type="UISchemaElement" required>
+  UI schema element with potential rule
+</ParamField>
+
+<ParamField path="data" type="any" required>
+  Current form data
+</ParamField>
+
+<ParamField path="path" type="string">
+  Current data path
+</ParamField>
+
+<ParamField path="ajv" type="Ajv" required>
+  AJV instance for schema-based conditions
+</ParamField>
+
+<ParamField path="config" type="unknown" required>
+  Form configuration
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  True if element should be enabled
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { isEnabled, createAjv } from '@jsonforms/core';
+
+const uischema = {
+  type: 'Control',
+  scope: '#/properties/zip',
+  rule: {
+    effect: 'ENABLE',
+    condition: {
+      scope: '#/properties/country',
+      schema: { const: 'US' }
+    }
+  }
+};
+
+const ajv = createAjv();
+
+isEnabled(uischema, { country: 'US' }, '', ajv, {});  // true
+isEnabled(uischema, { country: 'CA' }, '', ajv, {}); // false
+```
+
+### evalVisibility
+
+Evaluate visibility rule effect.
+
+```typescript
+function evalVisibility(
+  uischema: UISchemaElement,
+  data: any,
+  path?: string,
+  ajv: Ajv,
+  config: unknown
+): boolean
+```
+
+### evalEnablement
+
+Evaluate enablement rule effect.
+
+```typescript
+function evalEnablement(
+  uischema: UISchemaElement,
+  data: any,
+  path?: string,
+  ajv: Ajv,
+  config: unknown
+): boolean
+```
+
+### hasShowRule
+
+Check if UI schema has a SHOW or HIDE rule.
+
+```typescript
+function hasShowRule(uischema: UISchemaElement): boolean
+```
+
+### hasEnableRule
+
+Check if UI schema has an ENABLE or DISABLE rule.
+
+```typescript
+function hasEnableRule(uischema: UISchemaElement): boolean
+```

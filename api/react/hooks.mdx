@@ -1,0 +1,281 @@
+---
+title: React Hooks
+description: React hooks for accessing JSON Forms state and functionality
+---
+
+## useJsonForms
+
+The primary hook for accessing JSON Forms state and dispatch function from within the `JsonFormsStateProvider` context.
+
+### Returns
+
+<ParamField path="core" type="JsonFormsCore">
+  The core JSON Forms state containing:
+  - `data` - Current form data
+  - `schema` - JSON Schema
+  - `uischema` - UI Schema  
+  - `errors` - Validation errors
+  - `additionalErrors` - Additional validation errors
+  - `validator` - Validation function
+  - `ajv` - Ajv instance
+</ParamField>
+
+<ParamField path="renderers" type="JsonFormsRendererRegistryEntry[]">
+  Available renderer registry entries
+</ParamField>
+
+<ParamField path="cells" type="JsonFormsCellRendererRegistryEntry[]">
+  Available cell renderer registry entries
+</ParamField>
+
+<ParamField path="config" type="any">
+  Configuration object
+</ParamField>
+
+<ParamField path="uischemas" type="JsonFormsUISchemaRegistryEntry[]">
+  UI schema registry entries
+</ParamField>
+
+<ParamField path="readonly" type="boolean">
+  Read-only mode flag
+</ParamField>
+
+<ParamField path="i18n" type="JsonFormsI18nState">
+  Internationalization state with locale and translation functions
+</ParamField>
+
+<ParamField path="dispatch" type="Dispatch<CoreActions>">
+  Dispatch function for updating core state. Can be used to dispatch actions like:
+  - `Actions.init()` - Initialize state
+  - `Actions.update()` - Update data
+  - `Actions.updateCore()` - Update core properties
+  - `Actions.setConfig()` - Set configuration
+</ParamField>
+
+### Example
+
+```tsx
+import { useJsonForms } from '@jsonforms/react';
+import { Actions } from '@jsonforms/core';
+
+function CustomComponent() {
+  const { core, dispatch } = useJsonForms();
+  
+  const handleReset = () => {
+    dispatch(Actions.update('', () => ({})));
+  };
+  
+  return (
+    <div>
+      <pre>{JSON.stringify(core.data, null, 2)}</pre>
+      <button onClick={handleReset}>Reset</button>
+    </div>
+  );
+}
+```
+
+### Usage in Custom Renderers
+
+While HOCs are the recommended approach for most renderers, you can use `useJsonForms` directly for more control:
+
+```tsx
+import { useJsonForms } from '@jsonforms/react';
+import { ControlProps, OwnPropsOfControl } from '@jsonforms/core';
+
+function MyCustomControl(props: OwnPropsOfControl) {
+  const ctx = useJsonForms();
+  
+  // Manually map state to props (HOCs do this automatically)
+  const { data, path, handleChange, enabled } = ctxToControlProps(ctx, props);
+  
+  return (
+    <input
+      value={data || ''}
+      onChange={(e) => handleChange(path, e.target.value)}
+      disabled={!enabled}
+    />
+  );
+}
+```
+
+## Context Mapping Functions
+
+These utility functions are used internally by HOCs but can also be used with `useJsonForms` for custom state mapping:
+
+### ctxToControlProps
+
+Maps context and own props to control props.
+
+```tsx
+function ctxToControlProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfControl
+): ControlProps
+```
+
+### ctxToLayoutProps
+
+Maps context and own props to layout props.
+
+```tsx
+function ctxToLayoutProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfLayout
+): LayoutProps
+```
+
+### ctxToArrayControlProps
+
+Maps context and own props to array control props.
+
+```tsx
+function ctxToArrayControlProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfControl
+): ArrayControlProps
+```
+
+### ctxToArrayLayoutProps
+
+Maps context and own props to array layout props.
+
+```tsx
+function ctxToArrayLayoutProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfControl
+): ArrayLayoutProps
+```
+
+### ctxToCellProps
+
+Maps context and own props to cell props.
+
+```tsx
+function ctxToCellProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfCell
+): CellProps
+```
+
+### ctxToEnumControlProps
+
+Maps context and own props to enum control props with memoized options.
+
+```tsx
+function ctxToEnumControlProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfEnum
+): EnumControlProps
+```
+
+### ctxToOneOfProps
+
+Maps context and own props to oneOf combinator props.
+
+```tsx
+function ctxToOneOfProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfControl
+): CombinatorRendererProps
+```
+
+### ctxToAnyOfProps
+
+Maps context and own props to anyOf combinator props.
+
+```tsx
+function ctxToAnyOfProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfControl
+): CombinatorRendererProps
+```
+
+### ctxToAllOfProps
+
+Maps context and own props to allOf combinator props.
+
+```tsx
+function ctxToAllOfProps(
+  ctx: JsonFormsStateContext,
+  props: OwnPropsOfControl
+): AllOfProps
+```
+
+## Dispatch Mapping Functions
+
+Functions for mapping dispatch to props:
+
+### ctxDispatchToControlProps
+
+Creates dispatch props for controls.
+
+```tsx
+function ctxDispatchToControlProps(
+  dispatch: Dispatch<ReducerAction<any>>
+): DispatchPropsOfControl
+```
+
+### ctxDispatchToArrayControlProps
+
+Creates dispatch props for array controls.
+
+```tsx
+function ctxDispatchToArrayControlProps(
+  dispatch: Dispatch<ReducerAction<any>>
+): DispatchPropsOfArrayControl
+```
+
+### ctxDispatchToMultiEnumProps
+
+Creates dispatch props for multi-enum controls.
+
+```tsx
+function ctxDispatchToMultiEnumProps(
+  dispatch: Dispatch<ReducerAction<any>>
+): DispatchPropsOfMultiEnumControl
+```
+
+## Translation Hooks
+
+### withTranslateProps
+
+HOC that injects translation props into a component.
+
+```tsx
+function withTranslateProps<P>(
+  Component: ComponentType<TranslateProps & P>
+): ComponentType<P>
+```
+
+Provides:
+- `t` - Translation function
+- `locale` - Current locale string
+
+### withArrayTranslationProps
+
+HOC that provides array-specific translations for array renderers.
+
+```tsx
+function withArrayTranslationProps<P extends ArrayLayoutProps>(
+  Component: ComponentType<P & { translations: ArrayTranslations }>
+): ComponentType<P & TranslateProps>
+```
+
+Provides:
+- `translations` - Object with translated strings for array operations (add, remove, up, down, etc.)
+
+### Example
+
+```tsx
+import { withTranslateProps, TranslateProps } from '@jsonforms/react';
+
+interface MyComponentProps {
+  label: string;
+}
+
+function MyComponent({ label, t, locale }: MyComponentProps & TranslateProps) {
+  return <div>{t(label, label)}</div>;
+}
+
+export default withTranslateProps(MyComponent);
+```

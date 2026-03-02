@@ -1,0 +1,304 @@
+---
+title: React Context
+description: Context providers and state management for JSON Forms React integration
+---
+
+## JsonFormsContext
+
+The React Context that provides JSON Forms state throughout the component tree.
+
+### Context Value
+
+The context value is of type `JsonFormsStateContext`:
+
+<ParamField path="core" type="JsonFormsCore" required>
+  Core state object containing:
+  - `data` (any) - Current form data
+  - `schema` (JsonSchema) - JSON Schema
+  - `uischema` (UISchemaElement) - UI Schema
+  - `errors` (ErrorObject[]) - Validation errors
+  - `additionalErrors` (ErrorObject[]) - Additional errors
+  - `validator` (ValidateFunction) - Validation function
+  - `ajv` (Ajv) - Ajv instance
+</ParamField>
+
+<ParamField path="renderers" type="JsonFormsRendererRegistryEntry[]">
+  Registry of available renderers
+</ParamField>
+
+<ParamField path="cells" type="JsonFormsCellRendererRegistryEntry[]">
+  Registry of available cell renderers
+</ParamField>
+
+<ParamField path="config" type="any">
+  Configuration object
+</ParamField>
+
+<ParamField path="uischemas" type="JsonFormsUISchemaRegistryEntry[]">
+  Registry of UI schemas for dynamic resolution
+</ParamField>
+
+<ParamField path="readonly" type="boolean">
+  Whether the form is in read-only mode
+</ParamField>
+
+<ParamField path="i18n" type="JsonFormsI18nState">
+  Internationalization state:
+  - `locale` (string) - Current locale
+  - `translate` (Translator) - Translation function
+  - `translateError` (ErrorTranslator) - Error translation function
+</ParamField>
+
+<ParamField path="dispatch" type="Dispatch<CoreActions>">
+  Function to dispatch actions to update the core state
+</ParamField>
+
+### Accessing Context
+
+Use the `useJsonForms` hook to access the context:
+
+```tsx
+import { useJsonForms } from '@jsonforms/react';
+
+function MyComponent() {
+  const ctx = useJsonForms();
+  
+  return (
+    <div>
+      <h3>Current Data:</h3>
+      <pre>{JSON.stringify(ctx.core.data, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
+## JsonFormsStateProvider
+
+Context provider component that manages JSON Forms state. Handles state initialization, updates, validation, and change notifications.
+
+### Props
+
+<ParamField path="initState" type="object" required>
+  Initial state configuration containing:
+  - `core` - Core state with data, schema, uischema, ajv, validationMode, additionalErrors
+  - `renderers` - Renderer registry
+  - `cells` - Cell renderer registry
+  - `config` - Configuration object
+  - `uischemas` - UI schema registry
+  - `readonly` - Read-only flag
+  - `i18n` - Internationalization state
+</ParamField>
+
+<ParamField path="onChange" type="(state: Pick<JsonFormsCore, 'data' | 'errors'>) => void">
+  Callback invoked when data or errors change. Debounced by 10ms to handle rapid updates.
+</ParamField>
+
+<ParamField path="middleware" type="Middleware">
+  Middleware function for intercepting and transforming actions before they reach the reducer.
+  
+  Signature:
+  ```tsx
+  type Middleware = (
+    state: JsonFormsCore,
+    action: CoreActions,
+    reducer: Reducer<JsonFormsCore, CoreActions>
+  ) => JsonFormsCore
+  ```
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  Child components that will have access to the JSON Forms context
+</ParamField>
+
+### State Management
+
+The provider manages state through reducers:
+
+- **Core Reducer** - Handles data updates, validation, and schema changes
+- **Config Reducer** - Manages configuration updates
+- **i18n Reducer** - Manages internationalization state
+
+### Change Detection
+
+Changes are debounced by 10ms to handle edge cases like browser auto-fill that may trigger multiple rapid updates. This prevents data loss and infinite render loops.
+
+### Example: Custom Provider Setup
+
+```tsx
+import { JsonFormsStateProvider, useJsonForms } from '@jsonforms/react';
+import { materialRenderers } from '@jsonforms/material-renderers';
+
+function FormWrapper() {
+  const [formState, setFormState] = useState({ data: {}, errors: [] });
+  
+  const initState = {
+    core: {
+      data: formState.data,
+      schema: mySchema,
+      uischema: myUiSchema,
+    },
+    renderers: materialRenderers,
+    cells: materialCells,
+  };
+  
+  return (
+    <JsonFormsStateProvider
+      initState={initState}
+      onChange={setFormState}
+    >
+      <FormContent />
+      <FormActions />
+    </JsonFormsStateProvider>
+  );
+}
+
+function FormContent() {
+  const { core } = useJsonForms();
+  return <JsonFormsDispatch />;
+}
+
+function FormActions() {
+  const { dispatch } = useJsonForms();
+  
+  const handleReset = () => {
+    dispatch(Actions.update('', () => ({})));
+  };
+  
+  return <button onClick={handleReset}>Reset Form</button>;
+}
+```
+
+## Middleware
+
+Middleware allows you to intercept and transform actions before they update the state.
+
+### Default Middleware
+
+The package exports a `defaultMiddleware` that simply passes actions through:
+
+```tsx
+const defaultMiddleware: Middleware = (state, action, reducer) => {
+  return reducer(state, action);
+};
+```
+
+### Custom Middleware Example
+
+```tsx
+import { JsonForms } from '@jsonforms/react';
+import type { Middleware } from '@jsonforms/core';
+
+const loggingMiddleware: Middleware = (state, action, reducer) => {
+  console.log('Before:', state.data);
+  console.log('Action:', action);
+  
+  const newState = reducer(state, action);
+  
+  console.log('After:', newState.data);
+  
+  return newState;
+};
+
+function App() {
+  return (
+    <JsonForms
+      data={data}
+      schema={schema}
+      renderers={renderers}
+      middleware={loggingMiddleware}
+      onChange={handleChange}
+    />
+  );
+}
+```
+
+### Middleware Use Cases
+
+- **Logging** - Track all state changes for debugging
+- **Validation** - Add custom validation logic
+- **Data transformation** - Transform data before/after updates
+- **Side effects** - Trigger external actions on specific changes
+- **Undo/Redo** - Implement history tracking
+- **Optimistic updates** - Handle async operations
+
+## Context HOC
+
+### withJsonFormsContext
+
+Higher-order component that injects the JSON Forms context into a component.
+
+```tsx
+function withJsonFormsContext(
+  Component: ComponentType<WithContext & any>
+): ComponentType<any>
+```
+
+### Example
+
+```tsx
+import { withJsonFormsContext, JsonFormsStateContext } from '@jsonforms/react';
+
+interface MyComponentProps {
+  ctx: JsonFormsStateContext;
+  props: any;
+}
+
+function MyComponent({ ctx, props }: MyComponentProps) {
+  return <div>{ctx.core.data.name}</div>;
+}
+
+export default withJsonFormsContext(MyComponent);
+```
+
+Note: For most use cases, the `useJsonForms` hook is preferred over this HOC.
+
+## Internal State Types
+
+### JsonFormsCore
+
+The core state shape:
+
+```tsx
+interface JsonFormsCore {
+  data: any;
+  schema: JsonSchema;
+  uischema: UISchemaElement | undefined;
+  errors: ErrorObject[];
+  additionalErrors: ErrorObject[];
+  validator: ValidateFunction | undefined;
+  ajv: Ajv | undefined;
+  validationMode?: ValidationMode;
+}
+```
+
+### ValidationMode
+
+Controls when and how validation errors are displayed:
+
+- `ValidateAndShow` - Validate and show all errors immediately
+- `ValidateAndHide` - Validate but don't show errors initially  
+- `NoValidation` - Disable validation
+
+### JsonFormsI18nState
+
+Internationalization state:
+
+```tsx
+interface JsonFormsI18nState {
+  locale: string;
+  translate: Translator;
+  translateError?: ErrorTranslator;
+}
+
+type Translator = (
+  key: string,
+  defaultMessage: string | undefined,
+  values?: any
+) => string;
+
+type ErrorTranslator = (
+  error: ErrorObject,
+  translate: Translator,
+  uischema?: UISchemaElement
+) => string;
+```

@@ -1,0 +1,522 @@
+---
+title: "Vue Composables"
+description: "Vue 3 composables for building JSON Forms renderers and accessing form state"
+---
+
+The `@jsonforms/vue` package provides composables (composition functions) for building custom renderers and accessing JSON Forms state in Vue 3 applications.
+
+## Renderer Props
+
+### rendererProps()
+
+Constructs a props declaration for Vue components to be used as renderers or cells.
+
+```typescript
+import { rendererProps } from '@jsonforms/vue';
+```
+
+#### Type Parameters
+
+<ParamField path="U" type="UISchemaElement" default="UISchemaElement">
+  The type of UI schema element this renderer handles. Use specialized types like `ControlElement`, `Layout`, or `LabelElement` for type safety.
+</ParamField>
+
+#### Returns
+
+An object containing Vue prop definitions:
+
+```typescript
+{
+  schema: { required: true, type: [Object, Boolean] },
+  uischema: { required: true, type: Object },
+  path: { required: true, type: String },
+  enabled: { required: false, type: Boolean },
+  renderers: { required: false, type: Array },
+  cells: { required: false, type: Array },
+  config: { required: false, type: Object }
+}
+```
+
+#### Example
+
+```vue
+<script setup lang="ts">
+import { ControlElement } from '@jsonforms/core';
+import { rendererProps } from '@jsonforms/vue';
+
+const props = defineProps({
+  ...rendererProps<ControlElement>()
+});
+</script>
+```
+
+### masterListItemProps()
+
+Constructs props for components used as master list items in master-detail controls.
+
+```typescript
+import { masterListItemProps } from '@jsonforms/vue';
+```
+
+#### Returns
+
+```typescript
+{
+  index: { required: true, type: Number },
+  selected: { required: true, type: Boolean },
+  path: { required: true, type: String },
+  schema: { required: true, type: [Object, Boolean] },
+  handleSelect: { required: false, type: Function },
+  removeItem: { required: false, type: Function }
+}
+```
+
+## Control Composables
+
+### useJsonFormsControl()
+
+Provides bindings for standard Control elements.
+
+```typescript
+import { useJsonFormsControl } from '@jsonforms/vue';
+```
+
+#### Parameters
+
+<ParamField path="props" type="ControlProps" required>
+  Props object containing schema, uischema, and path.
+</ParamField>
+
+#### Returns
+
+```typescript
+{
+  control: ComputedRef<ControlState>,
+  handleChange: (path: string, value: any) => void
+}
+```
+
+The `control` ref contains:
+- `data`: Current value
+- `label`: Computed label
+- `description`: Description text
+- `errors`: Validation error message
+- `enabled`: Whether control is enabled
+- `visible`: Whether control is visible
+- `required`: Whether value is required
+- `path`: Data path
+- `id`: Control ID
+- `schema`: JSON Schema for this control
+- `uischema`: UI Schema element
+- `rootSchema`: Root JSON Schema
+- `config`: Configuration object
+
+#### Example
+
+```vue
+<template>
+  <div v-if="control.visible">
+    <label :for="control.id">{{ control.label }}</label>
+    <input
+      :id="control.id"
+      :value="control.data"
+      :disabled="!control.enabled"
+      @input="onChange"
+    />
+    <span v-if="control.errors" class="error">{{ control.errors }}</span>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ControlElement } from '@jsonforms/core';
+import { rendererProps, useJsonFormsControl } from '@jsonforms/vue';
+
+const props = defineProps({
+  ...rendererProps<ControlElement>()
+});
+
+const { control, handleChange } = useJsonFormsControl(props);
+
+const onChange = (event: Event) => {
+  handleChange(control.value.path, (event.target as HTMLInputElement).value);
+};
+</script>
+```
+
+### useJsonFormsEnumControl()
+
+Provides bindings for enum Control elements.
+
+```typescript
+import { useJsonFormsEnumControl } from '@jsonforms/vue';
+```
+
+Adds `options` array to the control state with enum values.
+
+#### Example
+
+```vue
+<template>
+  <select
+    :value="control.data"
+    :disabled="!control.enabled"
+    @change="onChange"
+  >
+    <option v-for="option in control.options" :key="option.value" :value="option.value">
+      {{ option.label }}
+    </option>
+  </select>
+</template>
+
+<script setup lang="ts">
+import { rendererProps, useJsonFormsEnumControl } from '@jsonforms/vue';
+
+const props = defineProps({
+  ...rendererProps<ControlElement>()
+});
+
+const { control, handleChange } = useJsonFormsEnumControl(props);
+
+const onChange = (event: Event) => {
+  handleChange(control.value.path, (event.target as HTMLSelectElement).value);
+};
+</script>
+```
+
+### useJsonFormsOneOfEnumControl()
+
+Provides bindings for oneOf enum controls (enums with label support).
+
+```typescript
+import { useJsonFormsOneOfEnumControl } from '@jsonforms/vue';
+```
+
+### useJsonFormsMultiEnumControl()
+
+Provides bindings for multiple choice enum controls.
+
+```typescript
+import { useJsonFormsMultiEnumControl } from '@jsonforms/vue';
+```
+
+Provides `addItem` and `removeItem` methods for managing array values.
+
+### useJsonFormsArrayControl()
+
+Provides bindings for array Control elements.
+
+```typescript
+import { useJsonFormsArrayControl } from '@jsonforms/vue';
+```
+
+#### Returns
+
+Additional methods:
+- `addItem(path: string, value: any)`: Add item to array
+- `removeItems(path: string, toDelete: number[])`: Remove items from array
+- `moveUp(path: string, index: number)`: Move item up
+- `moveDown(path: string, index: number)`: Move item down
+
+### useJsonFormsControlWithDetail()
+
+Provides bindings for controls that display detail views (arrays, objects).
+
+```typescript
+import { useJsonFormsControlWithDetail } from '@jsonforms/vue';
+```
+
+### useJsonFormsAllOfControl()
+
+Provides bindings for allOf schema controls.
+
+```typescript
+import { useJsonFormsAllOfControl } from '@jsonforms/vue';
+```
+
+### useJsonFormsAnyOfControl()
+
+Provides bindings for anyOf schema controls.
+
+```typescript
+import { useJsonFormsAnyOfControl } from '@jsonforms/vue';
+```
+
+### useJsonFormsOneOfControl()
+
+Provides bindings for oneOf schema controls.
+
+```typescript
+import { useJsonFormsOneOfControl } from '@jsonforms/vue';
+```
+
+## Layout Composables
+
+### useJsonFormsLayout()
+
+Provides bindings for Layout elements (VerticalLayout, HorizontalLayout, Group).
+
+```typescript
+import { useJsonFormsLayout } from '@jsonforms/vue';
+```
+
+#### Returns
+
+```typescript
+{
+  layout: ComputedRef<LayoutState>
+}
+```
+
+#### Example
+
+```vue
+<template>
+  <div v-if="layout.visible" class="vertical-layout">
+    <dispatch-renderer
+      v-for="(element, index) in layout.uischema.elements"
+      :key="index"
+      :schema="layout.schema"
+      :uischema="element"
+      :path="layout.path"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { Layout } from '@jsonforms/core';
+import { rendererProps, useJsonFormsLayout } from '@jsonforms/vue';
+import { DispatchRenderer } from '@jsonforms/vue';
+
+const props = defineProps({
+  ...rendererProps<Layout>()
+});
+
+const { layout } = useJsonFormsLayout(props);
+</script>
+```
+
+### useJsonFormsArrayLayout()
+
+Provides bindings for arrays rendered as layouts instead of controls.
+
+```typescript
+import { useJsonFormsArrayLayout } from '@jsonforms/vue';
+```
+
+## Cell Composables
+
+### useJsonFormsCell()
+
+Provides bindings for cell elements (compact controls for tables).
+
+```typescript
+import { useJsonFormsCell } from '@jsonforms/vue';
+```
+
+### useJsonFormsEnumCell()
+
+Provides bindings for enum cell elements.
+
+```typescript
+import { useJsonFormsEnumCell } from '@jsonforms/vue';
+```
+
+### useJsonFormsOneOfEnumCell()
+
+Provides bindings for oneOf enum cell elements.
+
+```typescript
+import { useJsonFormsOneOfEnumCell } from '@jsonforms/vue';
+```
+
+### useJsonFormsDispatchCell()
+
+Provides bindings for cell dispatchers.
+
+```typescript
+import { useJsonFormsDispatchCell } from '@jsonforms/vue';
+```
+
+## Other Composables
+
+### useJsonFormsRenderer()
+
+Provides generic bindings for any renderer. Useful for meta elements like dispatchers.
+
+```typescript
+import { useJsonFormsRenderer } from '@jsonforms/vue';
+```
+
+#### Returns
+
+```typescript
+{
+  renderer: ComputedRef<RendererState>,
+  rootSchema: ComputedRef<JsonSchema>
+}
+```
+
+### useJsonFormsLabel()
+
+Provides bindings for Label elements.
+
+```typescript
+import { useJsonFormsLabel } from '@jsonforms/vue';
+```
+
+### useJsonFormsMasterListItem()
+
+Provides bindings for master list item elements.
+
+```typescript
+import { useJsonFormsMasterListItem } from '@jsonforms/vue';
+```
+
+#### Returns
+
+```typescript
+{
+  item: ComputedRef<MasterListItemState>
+}
+```
+
+### useJsonFormsCategorization()
+
+Provides bindings for Categorization elements (tabbed layouts).
+
+```typescript
+import { useJsonFormsCategorization } from '@jsonforms/vue';
+```
+
+#### Returns
+
+```typescript
+{
+  layout: ComputedRef<CategorizationState>,
+  categories: ComputedRef<CategoryState>[]
+}
+```
+
+#### Example
+
+```vue
+<template>
+  <div class="categorization">
+    <div class="tabs">
+      <button
+        v-for="(category, index) in categories"
+        :key="index"
+        @click="activeTab = index"
+        :class="{ active: activeTab === index }"
+      >
+        {{ category.label }}
+      </button>
+    </div>
+    <div class="tab-content">
+      <dispatch-renderer
+        v-if="categories[activeTab]"
+        :schema="layout.schema"
+        :uischema="categories[activeTab].uischema"
+        :path="layout.path"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { Categorization } from '@jsonforms/core';
+import { rendererProps, useJsonFormsCategorization } from '@jsonforms/vue';
+import { DispatchRenderer } from '@jsonforms/vue';
+
+const props = defineProps({
+  ...rendererProps<Categorization>()
+});
+
+const { layout, categories } = useJsonFormsCategorization(props);
+const activeTab = ref(0);
+</script>
+```
+
+## Advanced: Custom Control Hook
+
+### useControl()
+
+Low-level composable for creating custom control bindings.
+
+```typescript
+import { useControl } from '@jsonforms/vue';
+```
+
+#### Signature
+
+```typescript
+function useControl<R, D, P extends RendererProps>(
+  props: P,
+  stateMap: (state: JsonFormsState, props: P) => R,
+  dispatchMap?: (dispatch: Dispatch<CoreActions>) => D
+): { control: ComputedRef<Required<P & R>> } & D
+```
+
+#### Parameters
+
+<ParamField path="props" type="P" required>
+  Renderer props.
+</ParamField>
+
+<ParamField path="stateMap" type="(state: JsonFormsState, props: P) => R" required>
+  Function to map state to component props.
+</ParamField>
+
+<ParamField path="dispatchMap" type="(dispatch: Dispatch<CoreActions>) => D">
+  Optional function to create dispatch methods.
+</ParamField>
+
+#### Example
+
+```typescript
+import { useControl } from '@jsonforms/vue';
+import { mapStateToControlProps, mapDispatchToControlProps } from '@jsonforms/core';
+
+const { control, handleChange } = useControl(
+  props,
+  mapStateToControlProps,
+  mapDispatchToControlProps
+);
+```
+
+## Type Definitions
+
+### ControlProps
+
+```typescript
+interface ControlProps extends RendererProps {
+  uischema: ControlElement;
+}
+```
+
+### LayoutProps
+
+```typescript
+interface LayoutProps extends RendererProps {
+  uischema: Layout;
+}
+```
+
+### RendererProps
+
+```typescript
+interface RendererProps<U = UISchemaElement> {
+  schema: JsonSchema;
+  uischema: U;
+  path: string;
+  enabled?: boolean;
+  renderers?: JsonFormsRendererRegistryEntry[];
+  cells?: JsonFormsCellRendererRegistryEntry[];
+  config?: any;
+}
+```
+
+<Note>
+  All composables must be used within a component that is a descendant of the `JsonForms` component, as they rely on Vue's provide/inject mechanism to access the form state.
+</Note>

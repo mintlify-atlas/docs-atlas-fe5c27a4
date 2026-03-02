@@ -1,0 +1,407 @@
+---
+title: Custom Cells
+description: Learn how to create custom cell renderers for table columns and array items in JSON Forms
+---
+
+## Overview
+
+Cells are lightweight renderers used primarily for rendering individual columns in tables or items in arrays. They are simpler than full controls and don't include labels or error messages.
+
+## Cell vs Control
+
+**Controls** are full-featured form elements with:
+- Labels
+- Error messages
+- Descriptions
+- Full layout support
+
+**Cells** are minimal renderers with:
+- Just the input element
+- No built-in label or error display
+- Used in tables and compact layouts
+- Better performance for large datasets
+
+## Cell Props
+
+Cells receive the following props:
+
+```typescript
+export interface CellProps extends StatePropsOfCell {
+  data?: any;
+  visible?: boolean;
+  enabled?: boolean;
+  id?: string;
+  parentPath?: string;
+  uischema?: UISchemaElement;
+  schema: JsonSchema;
+  path: string;
+  handleChange(path: string, value: any): void;
+  rootSchema?: JsonSchema;
+}
+
+export interface WithClassname {
+  className?: string;
+}
+```
+
+## Creating a Custom Cell
+
+### Example: Simple Text Cell
+
+```typescript
+import React from 'react';
+import {
+  CellProps,
+  isStringControl,
+  RankedTester,
+  rankWith,
+  WithClassname,
+} from '@jsonforms/core';
+import { withJsonFormsCellProps } from '@jsonforms/react';
+
+export const MyTextCell = (props: CellProps & WithClassname) => {
+  const { data, className, id, enabled, uischema, path, handleChange } = props;
+  
+  return (
+    <input
+      type="text"
+      value={data || ''}
+      onChange={(ev) => handleChange(path, ev.target.value)}
+      className={className}
+      id={id}
+      disabled={!enabled}
+    />
+  );
+};
+
+export const myTextCellTester: RankedTester = rankWith(
+  1,
+  isStringControl
+);
+
+export default withJsonFormsCellProps(MyTextCell);
+```
+
+### Example: Material UI Text Cell
+
+From the JSON Forms Material renderers:
+
+```typescript
+import React from 'react';
+import {
+  CellProps,
+  isStringControl,
+  RankedTester,
+  rankWith,
+  WithClassname,
+} from '@jsonforms/core';
+import { withJsonFormsCellProps } from '@jsonforms/react';
+import { MuiInputText } from '../mui-controls/MuiInputText';
+
+export const MaterialTextCell = (props: CellProps & WithClassname) => (
+  <MuiInputText {...props} />
+);
+
+export const materialTextCellTester: RankedTester = rankWith(
+  1,
+  isStringControl
+);
+
+export default withJsonFormsCellProps(MaterialTextCell);
+```
+
+## Common Cell Types
+
+### Boolean Cell
+
+```typescript
+export const MyBooleanCell = (props: CellProps & WithClassname) => {
+  const { data, className, id, enabled, path, handleChange } = props;
+  
+  return (
+    <input
+      type="checkbox"
+      checked={!!data}
+      onChange={(ev) => handleChange(path, ev.target.checked)}
+      className={className}
+      id={id}
+      disabled={!enabled}
+    />
+  );
+};
+
+export const myBooleanCellTester: RankedTester = rankWith(
+  1,
+  isBooleanControl
+);
+```
+
+### Number Cell
+
+```typescript
+export const MyNumberCell = (props: CellProps & WithClassname) => {
+  const { data, className, id, enabled, path, handleChange } = props;
+  
+  return (
+    <input
+      type="number"
+      value={data ?? ''}
+      onChange={(ev) => handleChange(path, parseFloat(ev.target.value))}
+      className={className}
+      id={id}
+      disabled={!enabled}
+    />
+  );
+};
+
+export const myNumberCellTester: RankedTester = rankWith(
+  1,
+  isNumberControl
+);
+```
+
+### Integer Cell
+
+```typescript
+export const MyIntegerCell = (props: CellProps & WithClassname) => {
+  const { data, className, id, enabled, path, handleChange } = props;
+  
+  return (
+    <input
+      type="number"
+      step="1"
+      value={data ?? ''}
+      onChange={(ev) => handleChange(path, parseInt(ev.target.value, 10))}
+      className={className}
+      id={id}
+      disabled={!enabled}
+    />
+  );
+};
+
+export const myIntegerCellTester: RankedTester = rankWith(
+  1,
+  isIntegerControl
+);
+```
+
+### Enum Cell
+
+```typescript
+export const MyEnumCell = (props: CellProps & WithClassname) => {
+  const { data, className, id, enabled, path, handleChange, schema } = props;
+  const options = schema.enum || [];
+  
+  return (
+    <select
+      value={data || ''}
+      onChange={(ev) => handleChange(path, ev.target.value)}
+      className={className}
+      id={id}
+      disabled={!enabled}
+    >
+      <option value="">Select...</option>
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+export const myEnumCellTester: RankedTester = rankWith(
+  2,
+  isEnumControl
+);
+```
+
+### Date Cell
+
+```typescript
+import { formatIs, or, optionIs } from '@jsonforms/core';
+
+export const MyDateCell = (props: CellProps & WithClassname) => {
+  const { data, className, id, enabled, path, handleChange } = props;
+  
+  return (
+    <input
+      type="date"
+      value={data || ''}
+      onChange={(ev) => handleChange(path, ev.target.value)}
+      className={className}
+      id={id}
+      disabled={!enabled}
+    />
+  );
+};
+
+export const myDateCellTester: RankedTester = rankWith(
+  2,
+  and(
+    isStringControl,
+    or(formatIs('date'), optionIs('format', 'date'))
+  )
+);
+```
+
+## Registering Custom Cells
+
+Register cells separately from renderers:
+
+```typescript
+import { JsonForms } from '@jsonforms/react';
+import { myTextCellTester, MyTextCell } from './MyTextCell';
+import { myNumberCellTester, MyNumberCell } from './MyNumberCell';
+
+const cells = [
+  { tester: myTextCellTester, cell: MyTextCell },
+  { tester: myNumberCellTester, cell: MyNumberCell },
+  // ... other cells
+];
+
+function App() {
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={renderers}
+      cells={cells}
+      onChange={({ data }) => setData(data)}
+    />
+  );
+}
+```
+
+## Using the withJsonFormsCellProps HOC
+
+The `withJsonFormsCellProps` Higher-Order Component connects your cell to the JSON Forms state:
+
+```typescript
+import { withJsonFormsCellProps } from '@jsonforms/react';
+
+const MyCell = (props: CellProps & WithClassname) => {
+  // Your cell implementation
+};
+
+export default withJsonFormsCellProps(MyCell);
+```
+
+This HOC provides:
+- Automatic data binding
+- Path resolution
+- State management
+- Visibility and enablement handling
+
+## Cells in Table Arrays
+
+Cells are automatically used when rendering table arrays:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/users",
+  "options": {
+    "detail": {
+      "type": "HorizontalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/email"
+        }
+      ]
+    }
+  }
+}
+```
+
+Each column will use the appropriate cell renderer based on the schema type.
+
+## Cell Registry
+
+JSON Forms uses a cell registry similar to the renderer registry:
+
+```typescript
+export interface JsonFormsCellRendererRegistryEntry {
+  tester: RankedTester;
+  cell: ComponentType<CellProps & WithClassname>;
+}
+```
+
+The cell with the highest rank is selected for each column.
+
+## Best Practices
+
+1. **Keep cells simple**: Cells should be lightweight and focused on rendering the value
+2. **No labels or errors**: Cells shouldn't render labels or error messages
+3. **Handle undefined data**: Always check for `undefined` or `null` data
+4. **Use proper types**: Ensure type conversions are correct (e.g., `parseInt` for integers)
+5. **Respect enabled prop**: Disable the input when `enabled` is `false`
+6. **Apply className**: Pass through the `className` prop for styling
+7. **Use unique ids**: Apply the `id` prop for accessibility
+8. **Performance matters**: Keep cells performant as they're used in large lists
+
+## Advanced: Custom Cell with Validation
+
+While cells don't typically display errors, you can still style them based on validation:
+
+```typescript
+export const MyValidatedTextCell = (props: CellProps & WithClassname) => {
+  const { data, className, id, enabled, path, handleChange, errors } = props;
+  const hasError = errors && errors.length > 0;
+  
+  return (
+    <input
+      type="text"
+      value={data || ''}
+      onChange={(ev) => handleChange(path, ev.target.value)}
+      className={`${className} ${hasError ? 'error' : ''}`}
+      id={id}
+      disabled={!enabled}
+      aria-invalid={hasError}
+    />
+  );
+};
+```
+
+## Testing Cells
+
+Test your cells with different data states:
+
+```typescript
+import { render } from '@testing-library/react';
+import { MyTextCell } from './MyTextCell';
+
+test('renders with data', () => {
+  const props = {
+    data: 'test value',
+    enabled: true,
+    id: 'test-id',
+    path: 'test.path',
+    handleChange: jest.fn(),
+    schema: { type: 'string' },
+  };
+  
+  const { getByDisplayValue } = render(<MyTextCell {...props} />);
+  expect(getByDisplayValue('test value')).toBeInTheDocument();
+});
+
+test('handles undefined data', () => {
+  const props = {
+    data: undefined,
+    enabled: true,
+    id: 'test-id',
+    path: 'test.path',
+    handleChange: jest.fn(),
+    schema: { type: 'string' },
+  };
+  
+  const { container } = render(<MyTextCell {...props} />);
+  expect(container.querySelector('input').value).toBe('');
+});
+```

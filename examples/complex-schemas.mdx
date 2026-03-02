@@ -1,0 +1,401 @@
+---
+title: Complex Schemas
+description: Advanced schema patterns including oneOf, anyOf, allOf, conditional rendering, and dynamic forms
+---
+
+JSON Forms supports advanced JSON Schema features for building sophisticated forms with conditional logic and complex data structures.
+
+## oneOf - Type Selection
+
+The `oneOf` keyword allows users to choose between different schema alternatives. This is useful for polymorphic data.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {
+        "address": {
+          "type": "object",
+          "properties": {
+            "street_address": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" }
+          },
+          "required": ["street_address", "city", "state"],
+          "additionalProperties": false
+        },
+        "user": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "mail": { "type": "string" }
+          },
+          "required": ["name", "mail"],
+          "additionalProperties": false
+        }
+      },
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "addressOrUser": {
+          "oneOf": [
+            { "$ref": "#/definitions/address" },
+            { "$ref": "#/definitions/user" }
+          ]
+        }
+      },
+      "required": ["name"]
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/addressOrUser"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Data">
+    ```json
+    {
+      "name": "test",
+      "addressOrUser": {
+        "name": "User",
+        "mail": "mail@example.com"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+JSON Forms automatically renders a dropdown to select between the `address` and `user` schemas.
+
+## anyOf - Multiple Valid Types
+
+The `anyOf` keyword is similar to `oneOf` but allows data to match multiple schemas simultaneously.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {
+        "address": {
+          "type": "object",
+          "properties": {
+            "street_address": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" }
+          },
+          "required": ["street_address", "city", "state"]
+        },
+        "user": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "mail": { "type": "string" }
+          },
+          "required": ["name", "mail"]
+        }
+      },
+      "type": "object",
+      "properties": {
+        "addressOrUser": {
+          "anyOf": [
+            { "$ref": "#/definitions/address" },
+            { "$ref": "#/definitions/user" }
+          ]
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/addressOrUser"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Data">
+    ```json
+    {
+      "addressOrUser": {
+        "street_address": "1600 Pennsylvania Avenue NW",
+        "city": "Washington",
+        "state": "DC"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## allOf - Schema Composition
+
+The `allOf` keyword combines multiple schemas, useful for extending base schemas with additional properties.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {
+        "address": {
+          "type": "object",
+          "properties": {
+            "street_address": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" }
+          },
+          "required": ["street_address", "city", "state"]
+        }
+      },
+      "type": "object",
+      "properties": {
+        "billing_address": {
+          "$ref": "#/definitions/address"
+        },
+        "shipping_address": {
+          "allOf": [
+            { "$ref": "#/definitions/address" },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["residential", "business"]
+                }
+              },
+              "required": ["type"]
+            }
+          ]
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "label": "Billing address",
+          "type": "Control",
+          "scope": "#/properties/billing_address"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/shipping_address"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Data">
+    ```json
+    {
+      "billing_address": {
+        "street_address": "1600 Pennsylvania Avenue NW",
+        "city": "Washington",
+        "state": "DC"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+The shipping address includes all properties from the base `address` schema plus the additional `type` field.
+
+## Rules - Conditional Rendering
+
+Rules enable dynamic form behavior based on data values. Use rules to show, hide, enable, or disable form elements.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "dead": {
+          "type": "boolean"
+        },
+        "kindOfDead": {
+          "type": "string",
+          "enum": ["Zombie", "Vampire", "Ghoul"]
+        },
+        "vegetables": {
+          "type": "boolean"
+        },
+        "kindOfVegetables": {
+          "type": "string",
+          "enum": ["All", "Some", "Only potatoes"]
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "label": "Name",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Group",
+          "elements": [
+            {
+              "type": "Control",
+              "label": "Is Dead?",
+              "scope": "#/properties/dead"
+            },
+            {
+              "type": "Control",
+              "label": "Kind of dead",
+              "scope": "#/properties/kindOfDead",
+              "rule": {
+                "effect": "ENABLE",
+                "condition": {
+                  "scope": "#/properties/dead",
+                  "schema": { "const": true }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "Group",
+          "elements": [
+            {
+              "type": "Control",
+              "label": "Eats vegetables?",
+              "scope": "#/properties/vegetables"
+            },
+            {
+              "type": "Control",
+              "label": "Kind of vegetables",
+              "scope": "#/properties/kindOfVegetables",
+              "rule": {
+                "effect": "HIDE",
+                "condition": {
+                  "scope": "#/properties/vegetables",
+                  "schema": { "const": false }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Data">
+    ```json
+    {
+      "name": "John Doe",
+      "dead": false,
+      "vegetables": false
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Rule Effects
+
+- **SHOW**: Shows the element when condition is true
+- **HIDE**: Hides the element when condition is true
+- **ENABLE**: Enables the element when condition is true
+- **DISABLE**: Disables the element when condition is true
+
+### Rule Conditions
+
+Conditions use JSON Schema to test data values:
+
+```json
+{
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "scope": "#/properties/provideAddress",
+      "schema": { "const": true }
+    }
+  }
+}
+```
+
+You can also use more complex schemas:
+
+```json
+{
+  "condition": {
+    "scope": "#/properties/age",
+    "schema": {
+      "type": "number",
+      "minimum": 18
+    }
+  }
+}
+```
+
+## Schema References
+
+Use `$ref` to reuse schema definitions and keep your schemas DRY:
+
+```json
+{
+  "definitions": {
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": { "type": "string" },
+        "city": { "type": "string" }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "billingAddress": { "$ref": "#/definitions/address" },
+    "shippingAddress": { "$ref": "#/definitions/address" }
+  }
+}
+```
+
+## Best Practices
+
+- Use **oneOf** when the user must choose exactly one type
+- Use **anyOf** when multiple schemas can apply simultaneously
+- Use **allOf** to extend base schemas with additional properties
+- Use **rules** for dynamic form behavior instead of conditional schemas when possible
+- Keep schema definitions reusable with `$ref`
+- Use `additionalProperties: false` with oneOf/anyOf to help JSON Forms distinguish between alternatives
+- Provide clear titles in oneOf/anyOf definitions for better user experience
+
+## Next Steps
+
+- Learn more about [Rules](/advanced/rules) for advanced conditional logic
+- Explore [Custom Renderers](/advanced/custom-renderers) to handle specialized schema patterns
+- See [Validation](/advanced/validation) for custom validation logic

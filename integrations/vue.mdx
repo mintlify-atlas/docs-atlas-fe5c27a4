@@ -1,0 +1,649 @@
+---
+title: Vue 3 Integration
+description: Integrate JSON Forms into your Vue 3 application with composables, reactive state, and component-based architecture
+---
+
+# Vue 3 Integration
+
+JSON Forms provides native Vue 3 support through the `@jsonforms/vue` package, leveraging Vue's Composition API with powerful composables for building reactive forms.
+
+## Installation
+
+<Steps>
+  <Step title="Install Core Dependencies">
+    ```bash
+    npm install @jsonforms/core @jsonforms/vue
+    ```
+  </Step>
+  
+  <Step title="Install Renderer Set">
+    Choose a renderer set for your UI framework:
+    
+    <CodeGroup>
+      ```bash Vuetify
+      npm install @jsonforms/vue-vuetify
+      ```
+      
+      ```bash Vanilla
+      npm install @jsonforms/vue-vanilla
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Basic Usage
+
+### JsonForms Component
+
+The `<json-forms>` component is the main entry point for rendering forms:
+
+```vue
+<template>
+  <json-forms
+    :data="data"
+    :schema="schema"
+    :uischema="uischema"
+    :renderers="renderers"
+    @change="onChange"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { JsonForms } from '@jsonforms/vue';
+import { vuetifyRenderers } from '@jsonforms/vue-vuetify';
+
+const data = ref({
+  name: '',
+  email: ''
+});
+
+const schema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    email: { type: 'string', format: 'email' }
+  },
+  required: ['name', 'email']
+};
+
+const uischema = {
+  type: 'VerticalLayout',
+  elements: [
+    { type: 'Control', scope: '#/properties/name' },
+    { type: 'Control', scope: '#/properties/email' }
+  ]
+};
+
+const renderers = Object.freeze(vuetifyRenderers);
+
+const onChange = (event: { data: any; errors: any[] }) => {
+  console.log('Data:', event.data);
+  console.log('Errors:', event.errors);
+  data.value = event.data;
+};
+</script>
+```
+
+### Component Props
+
+The `JsonForms` component accepts the following props:
+
+```typescript
+interface JsonFormsProps {
+  // Required
+  renderers: JsonFormsRendererRegistryEntry[];
+  
+  // Core data
+  data?: any;
+  schema?: JsonSchema;
+  uischema?: UISchemaElement;
+  
+  // Optional configuration
+  cells?: JsonFormsCellRendererRegistryEntry[];
+  config?: any;
+  readonly?: boolean;
+  uischemas?: JsonFormsUISchemaRegistryEntry[];
+  validationMode?: 'ValidateAndShow' | 'ValidateAndHide' | 'NoValidation';
+  ajv?: Ajv;
+  i18n?: JsonFormsI18nState;
+  additionalErrors?: ErrorObject[];
+  middleware?: Middleware;
+}
+
+// Emitted events
+interface JsonFormsChangeEvent {
+  data: any;
+  errors: ErrorObject[];
+}
+```
+
+<Note>
+If `schema` is not provided, JSON Forms will automatically generate one from the `data`. Similarly, if `uischema` is not provided, a default UI schema will be generated. The `renderers` prop is the only required prop.
+</Note>
+
+## Composition API
+
+JSON Forms provides comprehensive composables for building custom renderers using Vue's Composition API.
+
+### useJsonFormsControl
+
+The primary composable for creating control renderers:
+
+```vue
+<template>
+  <div>
+    <label :for="control.id">{{ control.label }}</label>
+    <input
+      :id="control.id"
+      :value="control.data"
+      :disabled="!control.enabled"
+      @input="onChange($event.target.value)"
+    />
+    <div v-if="control.errors">{{ control.errors }}</div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useJsonFormsControl } from '@jsonforms/vue';
+import { ControlElement } from '@jsonforms/core';
+
+const props = defineProps<{
+  schema: any;
+  uischema: ControlElement;
+  path: string;
+}>();
+
+const { control, handleChange } = useJsonFormsControl(props);
+
+const onChange = (value: string) => {
+  handleChange(props.path, value);
+};
+</script>
+```
+
+### Control Composables
+
+<Tabs>
+  <Tab title="Basic Controls">
+    ```typescript
+    // Generic control
+    const { control, handleChange } = useJsonFormsControl(props);
+    
+    // Enum/select control
+    const { control, handleChange } = useJsonFormsEnumControl(props);
+    
+    // OneOf enum control
+    const { control, handleChange } = useJsonFormsOneOfEnumControl(props);
+    
+    // Multi-select control
+    const { control, handleChange } = useJsonFormsMultiEnumControl(props);
+    
+    // Control with detail (objects/arrays)
+    const { control, handleChange } = useJsonFormsControlWithDetail(props);
+    ```
+  </Tab>
+  
+  <Tab title="Array Controls">
+    ```typescript
+    const {
+      control,
+      handleChange,
+      addItem,
+      removeItems,
+      moveUp,
+      moveDown
+    } = useJsonFormsArrayControl(props);
+    
+    // Usage
+    addItem(path, value)();
+    removeItems(path, [index])();
+    moveUp(path, index)();
+    moveDown(path, index)();
+    ```
+  </Tab>
+  
+  <Tab title="Combinators">
+    ```typescript
+    // AllOf combinator
+    const { control, handleChange } = useJsonFormsAllOfControl(props);
+    
+    // AnyOf combinator
+    const { control, handleChange } = useJsonFormsAnyOfControl(props);
+    
+    // OneOf combinator
+    const { control, handleChange } = useJsonFormsOneOfControl(props);
+    ```
+  </Tab>
+</Tabs>
+
+### Control Properties
+
+The `control` reactive ref provides access to all control state:
+
+```typescript
+interface ControlProps {
+  // Identification
+  id: string;
+  path: string;
+  
+  // Data
+  data: any;
+  
+  // Schema
+  schema: JsonSchema;
+  uischema: ControlElement;
+  rootSchema: JsonSchema;
+  
+  // State
+  enabled: boolean;
+  visible: boolean;
+  required: boolean;
+  
+  // Validation
+  errors: string;
+  
+  // Metadata
+  label: string;
+  description: string;
+  
+  // Configuration
+  config: any;
+  cells: JsonFormsCellRendererRegistryEntry[];
+  renderers: JsonFormsRendererRegistryEntry[];
+}
+```
+
+### useJsonFormsLayout
+
+For layout renderers (Vertical, Horizontal, Group):
+
+```vue
+<template>
+  <div class="vertical-layout">
+    <dispatch-renderer
+      v-for="(element, index) in layout.uischema.elements"
+      :key="index"
+      :schema="layout.schema"
+      :uischema="element"
+      :path="layout.path"
+      :enabled="layout.enabled"
+      :renderers="layout.renderers"
+      :cells="layout.cells"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useJsonFormsLayout } from '@jsonforms/vue';
+import { Layout } from '@jsonforms/core';
+import { DispatchRenderer } from '@jsonforms/vue';
+
+const props = defineProps<{
+  schema: any;
+  uischema: Layout;
+  path: string;
+}>();
+
+const { layout } = useJsonFormsLayout(props);
+</script>
+```
+
+### useJsonFormsArrayLayout
+
+For rendering arrays as layouts:
+
+```vue
+<template>
+  <div>
+    <h3>{{ layout.label }}</h3>
+    <div v-for="(item, index) in layout.data" :key="index">
+      <dispatch-renderer
+        :schema="layout.schema"
+        :uischema="layout.uischema"
+        :path="getChildPath(index)"
+      />
+      <button @click="removeItems(layout.path, [index])()">Remove</button>
+    </div>
+    <button @click="addItem(layout.path, createDefaultValue())()">Add</button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useJsonFormsArrayLayout } from '@jsonforms/vue';
+import { ControlElement } from '@jsonforms/core';
+
+const props = defineProps<{
+  schema: any;
+  uischema: ControlElement;
+  path: string;
+}>();
+
+const { layout, addItem, removeItems } = useJsonFormsArrayLayout(props);
+
+const getChildPath = (index: number) => `${props.path}/${index}`;
+const createDefaultValue = () => ({});
+</script>
+```
+
+### Cell Composables
+
+For rendering cells in tables:
+
+```typescript
+// Generic cell
+const { cell, handleChange } = useJsonFormsCell(props);
+
+// Enum cell
+const { cell, handleChange } = useJsonFormsEnumCell(props);
+
+// OneOf enum cell
+const { cell, handleChange } = useJsonFormsOneOfEnumCell(props);
+
+// Dispatch cell (for dynamic cell rendering)
+const { cell, handleChange } = useJsonFormsDispatchCell(props);
+```
+
+### Other Composables
+
+```typescript
+// Generic renderer (for meta renderers like DispatchRenderer)
+const { renderer, rootSchema } = useJsonFormsRenderer(props);
+
+// Label renderer
+const { label } = useJsonFormsLabel(props);
+
+// Master list item (for master-detail patterns)
+const { item } = useJsonFormsMasterListItem(props);
+
+// Categorization
+const { layout, categories } = useJsonFormsCategorization(props);
+```
+
+## Renderer Props Helper
+
+Use the `rendererProps` helper to declare props for custom renderers:
+
+```vue
+<script setup lang="ts">
+import { rendererProps, useJsonFormsControl } from '@jsonforms/vue';
+import { ControlElement } from '@jsonforms/core';
+
+// Generic renderer props
+const props = defineProps({
+  ...rendererProps<ControlElement>()
+});
+
+const { control, handleChange } = useJsonFormsControl(props);
+</script>
+```
+
+### Master List Item Props
+
+For master-detail list items:
+
+```vue
+<script setup lang="ts">
+import { masterListItemProps, useJsonFormsMasterListItem } from '@jsonforms/vue';
+
+const props = defineProps({
+  ...masterListItemProps()
+});
+
+const { item } = useJsonFormsMasterListItem(props);
+</script>
+```
+
+## Provide/Inject Pattern
+
+JSON Forms uses Vue's provide/inject for dependency injection:
+
+```typescript
+interface InjectJsonFormsState {
+  jsonforms: JsonFormsSubStates;
+}
+
+interface InjectJsonFormsDispatch {
+  dispatch: Dispatch<CoreActions>;
+}
+```
+
+The `JsonForms` component provides these values automatically. Custom renderers receive them via the composables.
+
+## Advanced Features
+
+### Middleware
+
+Intercept and transform actions:
+
+```vue
+<template>
+  <json-forms
+    :data="data"
+    :schema="schema"
+    :renderers="renderers"
+    :middleware="loggingMiddleware"
+    @change="onChange"
+  />
+</template>
+
+<script setup lang="ts">
+import type { Middleware } from '@jsonforms/core';
+
+const loggingMiddleware: Middleware = (state, action, reducer) => {
+  console.log('Action:', action.type);
+  console.log('Before:', state);
+  const newState = reducer(state, action);
+  console.log('After:', newState);
+  return newState;
+};
+</script>
+```
+
+### Custom Validation
+
+```vue
+<template>
+  <json-forms
+    :data="data"
+    :schema="schema"
+    :renderers="renderers"
+    :ajv="customAjv"
+    @change="onChange"
+  />
+</template>
+
+<script setup lang="ts">
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+
+const customAjv = new Ajv({
+  allErrors: true,
+  verbose: true,
+  strict: false
+});
+addFormats(customAjv);
+
+// Add custom formats
+customAjv.addFormat('postal-code', /^\d{5}$/);
+</script>
+```
+
+### Internationalization
+
+```vue
+<template>
+  <json-forms
+    :data="data"
+    :schema="schema"
+    :renderers="renderers"
+    :i18n="i18nConfig"
+    @change="onChange"
+  />
+</template>
+
+<script setup lang="ts">
+import type { Translator, JsonFormsI18nState } from '@jsonforms/core';
+
+const translations = {
+  'en': {
+    'name': 'Name',
+    'email': 'Email Address'
+  },
+  'de': {
+    'name': 'Name',
+    'email': 'E-Mail-Adresse'
+  }
+};
+
+const locale = ref('en');
+
+const translator: Translator = (key: string, defaultMessage: string) => {
+  return translations[locale.value]?.[key] || defaultMessage;
+};
+
+const i18nConfig: JsonFormsI18nState = {
+  locale: locale.value,
+  translate: translator,
+  translateError: (error) => error.message
+};
+</script>
+```
+
+### Readonly Mode
+
+```vue
+<template>
+  <div>
+    <button @click="readonly = !readonly">Toggle Readonly</button>
+    <json-forms
+      :data="data"
+      :schema="schema"
+      :renderers="renderers"
+      :readonly="readonly"
+      @change="onChange"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+
+const readonly = ref(false);
+</script>
+```
+
+### Validation Modes
+
+```vue
+<template>
+  <div>
+    <select v-model="validationMode">
+      <option value="ValidateAndShow">Validate and Show</option>
+      <option value="ValidateAndHide">Validate and Hide</option>
+      <option value="NoValidation">No Validation</option>
+    </select>
+    
+    <json-forms
+      :data="data"
+      :schema="schema"
+      :renderers="renderers"
+      :validation-mode="validationMode"
+      @change="onChange"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import type { ValidationMode } from '@jsonforms/core';
+
+const validationMode = ref<ValidationMode>('ValidateAndShow');
+</script>
+```
+
+## Reactivity Best Practices
+
+### Freezing Renderers
+
+For optimal performance, freeze renderer arrays:
+
+```typescript
+import { vuetifyRenderers } from '@jsonforms/vue-vuetify';
+
+const renderers = Object.freeze(vuetifyRenderers);
+```
+
+### Readonly Arrays
+
+Use the `MaybeReadonly` type for renderer/cell props:
+
+```typescript
+import type { MaybeReadonly } from '@jsonforms/vue';
+import type { JsonFormsRendererRegistryEntry } from '@jsonforms/core';
+
+const renderers: MaybeReadonly<JsonFormsRendererRegistryEntry[]> = 
+  Object.freeze(vuetifyRenderers);
+```
+
+### Computed Properties
+
+Use computed properties for derived state:
+
+```vue
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useJsonFormsControl } from '@jsonforms/vue';
+
+const { control } = useJsonFormsControl(props);
+
+const hasError = computed(() => !!control.value.errors);
+const isDisabled = computed(() => !control.value.enabled);
+</script>
+```
+
+## TypeScript Support
+
+JSON Forms Vue is written in TypeScript and exports all types:
+
+```typescript
+import type {
+  RendererProps,
+  ControlProps,
+  LayoutProps,
+  JsonFormsChangeEvent,
+  MaybeReadonly,
+  InjectJsonFormsState,
+  InjectJsonFormsDispatch
+} from '@jsonforms/vue';
+
+import type {
+  JsonSchema,
+  UISchemaElement,
+  ControlElement,
+  Layout,
+  ValidationMode
+} from '@jsonforms/core';
+```
+
+## Component Lifecycle
+
+The `JsonForms` component:
+
+1. **Initializes** core state on mount
+2. **Generates** missing schema/uischema if not provided
+3. **Watches** all props for changes and updates state reactively
+4. **Emits** `change` events on mount and whenever data/errors change
+5. **Provides** `jsonforms` state and `dispatch` to child components
+
+<Note>
+The `change` event is emitted immediately on mount with the initial data and validation errors. This allows parent components to react to default values and initial validation.
+</Note>
+
+## Next Steps
+
+- Explore [Vuetify renderers](/renderers/vue-vuetify)
+- Learn about [Vue Vanilla renderers](/renderers/vue-vanilla)
+- Create [custom Vue renderers](/advanced/custom-renderers)
+- Configure [validation](/advanced/validation)
+- Setup [internationalization](/advanced/i18n)

@@ -1,0 +1,220 @@
+---
+title: Angular Material Renderers
+description: Material Design renderer set for Angular applications with comprehensive form controls and layouts
+---
+
+The Angular Material renderer set provides a complete set of renderers for Angular applications using Angular Material components. This package includes controls, layouts, and complex renderers built on top of Angular Material.
+
+## Installation
+
+```bash
+npm install @jsonforms/angular-material
+```
+
+### Peer Dependencies
+
+The Angular Material renderer set requires the following peer dependencies:
+
+```bash
+npm install @jsonforms/core @jsonforms/angular @angular/material @angular/cdk @angular/animations hammerjs dayjs
+```
+
+Angular version 19.0.0 or higher is required.
+
+## Setup
+
+### 1. Import the Module
+
+Import the `JsonFormsAngularMaterialModule` in your Angular module:
+
+```typescript
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { JsonFormsModule } from '@jsonforms/angular';
+import { JsonFormsAngularMaterialModule } from '@jsonforms/angular-material';
+
+import { AppComponent } from './app.component';
+
+@NgModule({
+  declarations: [AppComponent],
+  imports: [
+    BrowserModule,
+    BrowserAnimationsModule,
+    JsonFormsModule,
+    JsonFormsAngularMaterialModule
+  ],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+```
+
+### 2. Import HammerJS
+
+Add HammerJS to your `main.ts` or `polyfills.ts`:
+
+```typescript
+import 'hammerjs';
+```
+
+### 3. Use in Component
+
+```typescript
+import { Component } from '@angular/core';
+import { angularMaterialRenderers } from '@jsonforms/angular-material';
+
+@Component({
+  selector: 'app-root',
+  template: `
+    <jsonforms
+      [data]="data"
+      [schema]="schema"
+      [uischema]="uischema"
+      [renderers]="renderers"
+      (dataChange)="onDataChange($event)"
+    ></jsonforms>
+  `
+})
+export class AppComponent {
+  renderers = angularMaterialRenderers;
+  data: any = {};
+  schema = { /* your schema */ };
+  uischema = { /* your uischema */ };
+
+  onDataChange(data: any) {
+    this.data = data;
+  }
+}
+```
+
+## Available Renderers
+
+### Control Renderers
+
+Control renderers handle individual form inputs:
+
+- **BooleanControlRenderer** - Checkbox for boolean values
+- **TextControlRenderer** - Text input field
+- **TextAreaRenderer** - Multi-line text input
+- **NumberControlRenderer** - Number input
+- **DateControlRenderer** - Date picker using Angular Material
+- **RangeControlRenderer** - Slider for numeric ranges
+- **ToggleControlRenderer** - Toggle switch for boolean values
+- **AutocompleteControlRenderer** - Autocomplete select for enum values
+- **ObjectControlRenderer** - Nested object structures
+
+### Layout Renderers
+
+Layout renderers organize form structure:
+
+- **VerticalLayoutRenderer** - Arranges elements vertically (default)
+- **HorizontalLayoutRenderer** - Arranges elements horizontally
+- **GroupLayoutRenderer** - Groups elements with Material card styling
+- **ArrayLayoutRenderer** - Array layout with add/remove functionality
+- **CategorizationTabLayoutRenderer** - Tab-based categorization using Material tabs
+
+### Additional Renderers
+
+- **LabelRenderer** - Displays label elements
+- **MasterListComponent** - Master-detail view for arrays
+- **TableRenderer** - Array data displayed as a table
+
+## Renderer Registry
+
+The package exports the `angularMaterialRenderers` array which contains all renderer registrations:
+
+```typescript
+import { angularMaterialRenderers } from '@jsonforms/angular-material';
+
+// Each entry contains a tester and renderer component
+[
+  { tester: booleanControlTester, renderer: BooleanControlRenderer },
+  { tester: TextControlRendererTester, renderer: TextControlRenderer },
+  // ... more renderers
+]
+```
+
+## Customization
+
+You can customize Angular Material renderers by:
+
+1. **Using Angular Material Theme** - Apply your Material theme to style all renderers
+2. **Custom Renderers** - Create custom renderer components that extend the Material renderers
+3. **Custom Testers** - Override default testers to change when renderers are applied
+
+### Example: Custom Theme
+
+Define a custom theme in your `styles.scss`:
+
+```scss
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+$my-primary: mat.define-palette(mat.$indigo-palette);
+$my-accent: mat.define-palette(mat.$pink-palette, A200, A100, A400);
+$my-warn: mat.define-palette(mat.$red-palette);
+
+$my-theme: mat.define-light-theme((
+  color: (
+    primary: $my-primary,
+    accent: $my-accent,
+    warn: $my-warn,
+  )
+));
+
+@include mat.all-component-themes($my-theme);
+```
+
+### Example: Custom Renderer
+
+```typescript
+import { Component } from '@angular/core';
+import { JsonFormsAngularService, JsonFormsControl } from '@jsonforms/angular';
+import { rankWith, isStringControl } from '@jsonforms/core';
+
+@Component({
+  selector: 'custom-text-control',
+  template: `
+    <mat-form-field>
+      <mat-label>{{ label }}</mat-label>
+      <input matInput [formControl]="form" [id]="id" />
+      <mat-error *ngIf="error">{{ error }}</mat-error>
+    </mat-form-field>
+  `
+})
+export class CustomTextControlRenderer extends JsonFormsControl {
+  constructor(service: JsonFormsAngularService) {
+    super(service);
+  }
+}
+
+export const customTextControlTester = rankWith(
+  5, // higher rank than default
+  isStringControl
+);
+
+// Register in your module
+const customRenderers = [
+  ...angularMaterialRenderers,
+  { tester: customTextControlTester, renderer: CustomTextControlRenderer }
+];
+```
+
+## TypeScript Support
+
+The Angular Material renderer set is written in TypeScript and includes full type definitions.
+
+## Material Design Icons
+
+The package uses Angular Material icons. Make sure to include the Material Icons font in your `index.html`:
+
+```html
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+```
+
+## Learn More
+
+- [Custom Renderers](/advanced/custom-renderers)
+- [Testers](/api/core/testers)
+- [Angular Material Documentation](https://material.angular.io/)

@@ -1,0 +1,101 @@
+---
+title: Core Package Overview
+description: Core utilities and framework-independent functionality for JSON Forms
+---
+
+The `@jsonforms/core` package provides the foundation for JSON Forms. It contains all framework-independent functionality including state management, validation, schema resolution, and UI schema testers.
+
+## Installation
+
+```bash
+npm install @jsonforms/core
+```
+
+## Key Exports
+
+The core package exports several categories of functionality:
+
+### Actions
+
+Action creators for managing JSON Forms state:
+- `init` - Initialize JSON Forms with data, schema, and UI schema
+- `update` - Update form data at a specific path
+- `setSchema` - Update the JSON schema
+- `setUISchema` - Update the UI schema
+- `registerRenderer` - Register a custom renderer
+- `setConfig` - Set form configuration
+
+See the [Actions API](/api/core/actions) for complete details.
+
+### Reducers
+
+Redux-compatible reducers for state management:
+- `coreReducer` - Handles core state (data, schema, validation)
+- `jsonFormsReducerConfig` - Complete reducer configuration
+
+See the [Reducers API](/api/core/reducers) for complete details.
+
+### Testers
+
+Functions to determine which renderer should handle a UI schema element:
+- `rankWith` - Create a ranked tester
+- `isControl` - Check if UI schema is a control
+- `schemaTypeIs` - Test schema type
+- `formatIs` - Test schema format
+- `and`, `or`, `not` - Compose testers
+
+See the [Testers API](/api/core/testers) for complete details.
+
+### Utilities
+
+Helper functions for common operations:
+- Path utilities (`composePaths`, `toDataPath`)
+- Schema resolution (`resolveSchema`, `resolveData`)
+- Validation (`createAjv`, `validate`)
+- Label generation (`createLabelDescriptionFrom`)
+- Runtime evaluation (`isVisible`, `isEnabled`)
+
+See the [Utilities API](/api/core/util) for complete details.
+
+## Usage Example
+
+```typescript
+import {
+  init,
+  coreReducer,
+  rankWith,
+  isControl,
+  schemaTypeIs
+} from '@jsonforms/core';
+
+// Initialize JSON Forms
+const initAction = init(
+  { name: 'John' },
+  {
+    type: 'object',
+    properties: {
+      name: { type: 'string' }
+    }
+  }
+);
+
+// Create a tester for string controls
+const stringControlTester = rankWith(
+  3,
+  and(isControl, schemaTypeIs('string'))
+);
+```
+
+## TypeScript Support
+
+The core package is written in TypeScript and exports all type definitions. Import types alongside functions:
+
+```typescript
+import type {
+  JsonSchema,
+  UISchemaElement,
+  ControlElement,
+  RankedTester,
+  Tester
+} from '@jsonforms/core';
+```

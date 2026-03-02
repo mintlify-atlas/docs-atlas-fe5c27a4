@@ -1,0 +1,338 @@
+---
+title: Arrays
+description: Handle lists and collections with array controls, including nested arrays and custom element labels
+---
+
+Arrays in JSON Forms allow you to manage lists of items dynamically. Users can add, remove, and reorder items in the array.
+
+## Basic Array
+
+A simple array of objects with multiple properties.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "type": "object",
+      "properties": {
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 5
+              },
+              "enum": {
+                "type": "string",
+                "const": "foo"
+              },
+              "oneOfEnum": {
+                "type": "string",
+                "oneOf": [
+                  { "const": "foo" },
+                  { "const": "bar" }
+                ]
+              }
+            }
+          }
+        },
+        "foo": {
+          "type": "string"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/foo"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/comments",
+          "options": {
+            "showSortButtons": false
+          }
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Data">
+    ```json
+    {
+      "comments": [
+        {
+          "date": "2001-09-11",
+          "message": "This is an example message"
+        },
+        {
+          "date": "2024-03-02",
+          "message": "Get ready for booohay",
+          "oneOfEnum": "test"
+        }
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Array with Sorting
+
+Enable sort buttons to allow users to reorder array items.
+
+<Tabs>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/comments",
+          "options": {
+            "showSortButtons": true
+          }
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Result">
+    Array items display up/down buttons to reorder elements.
+  </Tab>
+</Tabs>
+
+## Nested Arrays
+
+Arrays can contain objects with their own nested arrays, creating complex data structures.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "definitions": {
+        "choicesContainer": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "choices": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "type": "object",
+      "properties": {
+        "exampleArray": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/choicesContainer"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "HorizontalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "label": {
+            "text": "Example Array",
+            "show": true
+          },
+          "scope": "#/properties/exampleArray"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Data">
+    ```json
+    {
+      "exampleArray": [
+        {
+          "choices": ["This", "is", "an", "example"],
+          "name": "Hi there"
+        }
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Custom UI Schema for Nested Arrays
+
+You can register custom UI schemas for array items to control how nested elements are rendered:
+
+```typescript
+import { rankWith, schemaMatches } from '@jsonforms/core';
+
+const nestedArrayTester = rankWith(
+  5,
+  schemaMatches(
+    (schema) => schema.$ref === '#/definitions/choicesContainer'
+  )
+);
+
+const nestedArrayUISchema = {
+  type: 'VerticalLayout',
+  elements: [
+    {
+      type: 'Control',
+      scope: '#/properties/name'
+    },
+    {
+      type: 'Control',
+      scope: '#/properties/choices'
+    }
+  ]
+};
+
+const uischemas = [
+  {
+    tester: nestedArrayTester,
+    uischema: nestedArrayUISchema
+  }
+];
+```
+
+Then pass the `uischemas` array to the JsonForms component.
+
+## Array Options
+
+Customize array behavior with control options:
+
+### showSortButtons
+
+Enable or disable sorting controls:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/comments",
+  "options": {
+    "showSortButtons": true
+  }
+}
+```
+
+### detail
+
+Customize the layout for each array item:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/comments",
+  "options": {
+    "detail": {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/date"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/message"
+        }
+      ]
+    }
+  }
+}
+```
+
+### elementLabelProp
+
+Specify which property to use as the label for array items:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/comments",
+  "options": {
+    "elementLabelProp": "message"
+  }
+}
+```
+
+## List with Detail
+
+For complex array items, use the ListWithDetail renderer to show a master-detail view:
+
+```json
+{
+  "type": "ListWithDetail",
+  "scope": "#/properties/comments",
+  "options": {
+    "labelRef": "#/items/properties/message",
+    "detail": {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/date"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/message"
+        }
+      ]
+    }
+  }
+}
+```
+
+## Array Validation
+
+JSON Schema provides validation constraints for arrays:
+
+```json
+{
+  "type": "array",
+  "minItems": 1,
+  "maxItems": 10,
+  "uniqueItems": true,
+  "items": {
+    "type": "string"
+  }
+}
+```
+
+- **minItems**: Minimum number of items required
+- **maxItems**: Maximum number of items allowed
+- **uniqueItems**: Whether all items must be unique
+
+## Best Practices
+
+- Use **showSortButtons** when the order of items matters
+- Provide **elementLabelProp** to make arrays more user-friendly
+- Use **ListWithDetail** for arrays with complex objects
+- Set **minItems** and **maxItems** to guide users on expected array sizes
+- For deeply nested arrays, consider registering custom UI schemas for better control
+
+## Next Steps
+
+- Explore [Complex Schemas](/examples/complex-schemas) for oneOf, anyOf, and conditional logic
+- Learn about [Rules](/advanced/rules) for dynamic form behavior

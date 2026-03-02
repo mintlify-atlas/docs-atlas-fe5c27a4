@@ -1,0 +1,527 @@
+---
+title: UI Schema
+description: Control the layout and presentation of your forms with UI schemas
+---
+
+While JSON Schema defines the structure and validation of your data, UI Schema controls how the form is presented to users. It determines the layout, arrangement, and styling of form elements.
+
+## What is UI Schema?
+
+UI Schema is an optional declarative description of how your form should be rendered. Without a UI Schema, JSON Forms generates a default vertical layout. With UI Schema, you gain fine-grained control over:
+
+- Element layout (vertical, horizontal, groups)
+- Element order and grouping
+- Element visibility and behavior
+- Custom options and styling
+
+<Note>
+UI Schema is completely optional. If you don't provide one, JSON Forms will automatically generate a simple vertical layout from your JSON Schema.
+</Note>
+
+## UI Schema Elements
+
+All UI schema elements extend the base interface:
+
+```typescript
+interface BaseUISchemaElement {
+  type: string;              // Element type
+  rule?: Rule;               // Conditional visibility/behavior
+  options?: { [key: string]: any }; // Custom options
+}
+```
+
+### Control
+
+A control binds to a data property using a scope:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/name",
+  "label": "Full Name"
+}
+```
+
+```typescript
+interface ControlElement extends BaseUISchemaElement {
+  type: 'Control';
+  scope: string;  // JSON Pointer to data property
+  label?: string | boolean | LabelDescription;
+}
+```
+
+**Scope syntax:**
+- `#/properties/name` - Top-level property
+- `#/properties/address/properties/city` - Nested property
+- `#/properties/items/items/properties/title` - Array item property
+
+### Vertical Layout
+
+Stacks elements vertically (top to bottom):
+
+```json
+{
+  "type": "VerticalLayout",
+  "elements": [
+    { "type": "Control", "scope": "#/properties/firstName" },
+    { "type": "Control", "scope": "#/properties/lastName" }
+  ]
+}
+```
+
+```typescript
+interface VerticalLayout extends Layout {
+  type: 'VerticalLayout';
+  elements: UISchemaElement[];
+}
+```
+
+### Horizontal Layout
+
+Arranges elements horizontally (left to right):
+
+```json
+{
+  "type": "HorizontalLayout",
+  "elements": [
+    { "type": "Control", "scope": "#/properties/firstName" },
+    { "type": "Control", "scope": "#/properties/lastName" }
+  ]
+}
+```
+
+```typescript
+interface HorizontalLayout extends Layout {
+  type: 'HorizontalLayout';
+  elements: UISchemaElement[];
+}
+```
+
+### Group
+
+Groups elements with an optional label:
+
+```json
+{
+  "type": "Group",
+  "label": "Personal Information",
+  "elements": [
+    { "type": "Control", "scope": "#/properties/name" },
+    { "type": "Control", "scope": "#/properties/age" }
+  ]
+}
+```
+
+```typescript
+interface GroupLayout extends Layout {
+  type: 'Group';
+  label?: string;
+  elements: UISchemaElement[];
+}
+```
+
+### Label
+
+Displays static text:
+
+```json
+{
+  "type": "Label",
+  "text": "Please fill out all required fields"
+}
+```
+
+```typescript
+interface LabelElement extends BaseUISchemaElement {
+  type: 'Label';
+  text: string;
+}
+```
+
+### Categorization
+
+Creates tabbed or stepped navigation:
+
+```json
+{
+  "type": "Categorization",
+  "elements": [
+    {
+      "type": "Category",
+      "label": "Personal",
+      "elements": [
+        { "type": "Control", "scope": "#/properties/name" }
+      ]
+    },
+    {
+      "type": "Category",
+      "label": "Address",
+      "elements": [
+        { "type": "Control", "scope": "#/properties/street" }
+      ]
+    }
+  ]
+}
+```
+
+```typescript
+interface Categorization extends BaseUISchemaElement {
+  type: 'Categorization';
+  label: string;
+  elements: (Category | Categorization)[];
+}
+
+interface Category extends Layout {
+  type: 'Category';
+  label: string;
+  elements: UISchemaElement[];
+}
+```
+
+## Scopes and Data Binding
+
+Scopes use JSON Pointer syntax to reference schema properties:
+
+<Tabs>
+  <Tab title="Simple Property">
+    ```json
+    // Schema
+    {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    }
+    
+    // UI Schema
+    {
+      "type": "Control",
+      "scope": "#/properties/name"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Nested Property">
+    ```json
+    // Schema
+    {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "object",
+          "properties": {
+            "city": { "type": "string" }
+          }
+        }
+      }
+    }
+    
+    // UI Schema
+    {
+      "type": "Control",
+      "scope": "#/properties/address/properties/city"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Array Items">
+    ```json
+    // Schema
+    {
+      "type": "object",
+      "properties": {
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+    
+    // UI Schema for array control
+    {
+      "type": "Control",
+      "scope": "#/properties/comments"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+JSON Forms automatically converts scopes to data paths internally using the `toDataPath` utility from `packages/core/src/util/path.ts`.
+</Info>
+
+## Rules
+
+Rules allow conditional visibility and behavior:
+
+```typescript
+interface Rule {
+  effect: RuleEffect;     // HIDE, SHOW, ENABLE, DISABLE
+  condition: Condition;   // When to apply the effect
+}
+
+enum RuleEffect {
+  HIDE = 'HIDE',
+  SHOW = 'SHOW',
+  ENABLE = 'ENABLE',
+  DISABLE = 'DISABLE'
+}
+```
+
+### Leaf Condition
+
+Based on a specific value:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/vegetarianOptions",
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "type": "LEAF",
+      "scope": "#/properties/vegetarian",
+      "expectedValue": true
+    }
+  }
+}
+```
+
+```typescript
+interface LeafCondition extends BaseCondition {
+  type: 'LEAF';
+  scope: string;
+  expectedValue: any;
+}
+```
+
+### Schema-Based Condition
+
+Based on JSON Schema validation:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/postalCode",
+  "rule": {
+    "effect": "ENABLE",
+    "condition": {
+      "scope": "#/properties/country",
+      "schema": {
+        "const": "US"
+      }
+    }
+  }
+}
+```
+
+```typescript
+interface SchemaBasedCondition extends BaseCondition {
+  scope: string;
+  schema: JsonSchema;
+  failWhenUndefined?: boolean;
+}
+```
+
+### Composable Conditions
+
+Combine multiple conditions:
+
+```json
+{
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "type": "OR",
+      "conditions": [
+        {
+          "type": "LEAF",
+          "scope": "#/properties/isStudent",
+          "expectedValue": true
+        },
+        {
+          "type": "LEAF",
+          "scope": "#/properties/age",
+          "expectedValue": 65
+        }
+      ]
+    }
+  }
+}
+```
+
+```typescript
+interface OrCondition extends ComposableCondition {
+  type: 'OR';
+  conditions: Condition[];
+}
+
+interface AndCondition extends ComposableCondition {
+  type: 'AND';
+  conditions: Condition[];
+}
+```
+
+## Options
+
+Options provide renderer-specific customization:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/comments",
+  "options": {
+    "multi": true,
+    "rows": 5
+  }
+}
+```
+
+Common options:
+- `multi: true` - Multi-line text input
+- `format: "date"` - Override format
+- `slider: true` - Render number as slider
+- `detail` - Custom detail view for arrays
+
+## Complete Example
+
+Here's a real-world example combining multiple concepts:
+
+```json
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "HorizontalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/personalData/properties/age"
+        }
+      ]
+    },
+    {
+      "type": "Group",
+      "label": "Additional Information",
+      "elements": [
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/birthDate"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/nationality"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/vegetarian"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/vegetarianOptions",
+      "rule": {
+        "effect": "SHOW",
+        "condition": {
+          "type": "LEAF",
+          "scope": "#/properties/vegetarian",
+          "expectedValue": true
+        }
+      }
+    }
+  ]
+}
+```
+
+## TypeScript Interfaces
+
+From `packages/core/src/models/uischema.ts`:
+
+```typescript
+type UISchemaElement =
+  | BaseUISchemaElement
+  | ControlElement
+  | Layout
+  | LabelElement
+  | GroupLayout
+  | Category
+  | Categorization
+  | VerticalLayout
+  | HorizontalLayout;
+
+interface Scopable {
+  scope?: string;
+}
+
+interface Scoped extends Scopable {
+  scope: string;  // Required
+}
+
+interface Labelable<T = string> {
+  label?: string | T;
+}
+```
+
+## Internationalization
+
+UI Schema supports i18n keys:
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/name",
+  "i18n": "person.name"
+}
+```
+
+JSON Forms will look for translations like:
+- `person.name.label`
+- `person.name.description`
+
+See the i18n documentation for details.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start without UI Schema">
+    Begin with just a JSON Schema and let JSON Forms generate the default layout. Only add UI Schema when you need custom layouts.
+  </Accordion>
+  
+  <Accordion title="Keep UI Schema simple">
+    Avoid deeply nested layouts. Use Groups to organize related fields instead of complex nesting.
+  </Accordion>
+  
+  <Accordion title="Use rules sparingly">
+    Complex rule logic can make forms hard to maintain. Consider breaking complex forms into multiple steps.
+  </Accordion>
+  
+  <Accordion title="Leverage options">
+    Use options to customize renderer behavior without creating custom renderers.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Renderers" icon="code" href="/concepts/renderers">
+    Learn how renderers interpret UI Schema elements
+  </Card>
+  <Card title="Data Binding" icon="arrows-rotate" href="/concepts/data-binding">
+    Understand how scopes connect to your data
+  </Card>
+</CardGroup>

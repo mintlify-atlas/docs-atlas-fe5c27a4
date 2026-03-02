@@ -1,0 +1,111 @@
+---
+title: Migration Guide Overview
+description: Guide for migrating between major versions of JSON Forms, including breaking changes and upgrade paths
+---
+
+This guide helps you migrate your JSON Forms application across different versions. JSON Forms follows semantic versioning, and this guide documents all breaking changes and migration steps required for major version upgrades.
+
+## Version Migration Paths
+
+Select the version you're migrating to:
+
+- [JSON Forms 3.x](/migration/v3) - Latest major version with improved testers, schema resolution, and framework support
+- JSON Forms 2.x - Previous stable version (deprecated)
+- JSON Forms 1.x - AngularJS version (legacy)
+
+## Understanding Breaking Changes
+
+JSON Forms uses semantic versioning:
+
+- **Major versions** (e.g., 2.x → 3.x) may include breaking changes
+- **Minor versions** (e.g., 3.0 → 3.1) add features in a backward-compatible manner
+- **Patch versions** (e.g., 3.0.0 → 3.0.1) include backward-compatible bug fixes
+
+However, some minor version updates may include breaking changes for specific framework integrations (e.g., Angular version support).
+
+## Quick Migration Checklist
+
+Before starting your migration:
+
+<Steps>
+  <Step title="Review your current version">
+    Check your `package.json` to identify your current JSON Forms version
+  </Step>
+  
+  <Step title="Read the relevant migration guide">
+    Review all version-specific changes between your current version and target version
+  </Step>
+  
+  <Step title="Update dependencies">
+    Update all JSON Forms packages to the target version
+  </Step>
+  
+  <Step title="Apply breaking changes">
+    Update your code according to the migration guide
+  </Step>
+  
+  <Step title="Test thoroughly">
+    Run your test suite and manually test all forms in your application
+  </Step>
+</Steps>
+
+## Getting Help
+
+If you encounter issues during migration:
+
+- Check the [GitHub Discussions](https://github.com/eclipsesource/jsonforms/discussions) for community support
+- Review the [GitHub Issues](https://github.com/eclipsesource/jsonforms/issues) for known migration problems
+- Consult the [documentation](/quickstart) for updated usage patterns
+
+## Migration from JSON Forms 1.x
+
+JSON Forms 1.x was based on AngularJS and has significant architectural differences from 2.x and later versions.
+
+### Architectural Changes
+
+Two major changes to understand:
+
+1. **Framework Agnostic** - JSON Forms 2.x+ does not rely on any specific UI framework. Choose from React, Angular, or Vue renderer sets.
+
+2. **Redux-based State Management** - JSON Forms 2.x initially used Redux for internal state (later made optional in 2.5+).
+
+### Migration Steps from 1.x
+
+<Steps>
+  <Step title="Update UI schemata">
+    The UI Schema for controls was simplified. The `ref` object inside `scope` was removed.
+
+    **Before:**
+    ```ts
+    const uischema = {
+      type: 'Control',
+      scope: {
+        $ref: '#/properties/name'
+      }
+    };
+    ```
+
+    **After:**
+    ```ts
+    const uischema = {
+      type: 'Control',
+      scope: '#/properties/name'
+    };
+    ```
+  </Step>
+
+  <Step title="Choose a renderer set">
+    Select which framework and renderer set to use:
+    - React with Material UI (most polished)
+    - Angular with Angular Material
+    - Vue with Vuetify or Vanilla renderers
+
+    Refer to the [Getting Started guide](/quickstart) for framework-specific setup.
+  </Step>
+
+  <Step title="Migrate custom renderers">
+    Any custom renderer needs to be refactored to conform to the new custom renderer style. See the [Custom Renderers](/advanced/custom-renderers) documentation for detailed instructions.
+
+    The good news: Writing custom renderers is much simpler in JSON Forms 2.x+ since the framework handles rendering and re-rendering automatically.
+  </Step>
+</Steps>

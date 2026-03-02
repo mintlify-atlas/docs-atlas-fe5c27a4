@@ -1,0 +1,387 @@
+---
+title: Installation
+description: Install JSON Forms for React, Angular, or Vue. Complete installation guides with all required dependencies and peer dependencies for each framework.
+---
+
+# Installation
+
+JSON Forms is available as npm packages for React, Angular, and Vue. This guide covers installation for all supported frameworks and renderer sets.
+
+## Package overview
+
+JSON Forms is built with a modular architecture. Each installation requires:
+
+1. **Core package** - `@jsonforms/core` (v3.7.0)
+2. **Framework binding** - React, Angular, or Vue package
+3. **Renderer set** - UI components for your chosen design system
+
+<Note>
+All JSON Forms packages are currently at version **3.7.0**. Make sure all packages use the same version to avoid compatibility issues.
+</Note>
+
+## React
+
+JSON Forms provides two renderer sets for React:
+
+- **Material Renderers** - Based on Material-UI (MUI)
+- **Vanilla Renderers** - Unstyled HTML5 controls
+
+<Tabs>
+  <Tab title="Material Renderers">
+
+### Install JSON Forms packages
+
+<CodeGroup>
+
+```bash npm
+npm install @jsonforms/core@3.7.0 @jsonforms/react@3.7.0 @jsonforms/material-renderers@3.7.0
+```
+
+```bash pnpm
+pnpm add @jsonforms/core@3.7.0 @jsonforms/react@3.7.0 @jsonforms/material-renderers@3.7.0
+```
+
+```bash yarn
+yarn add @jsonforms/core@3.7.0 @jsonforms/react@3.7.0 @jsonforms/material-renderers@3.7.0
+```
+
+</CodeGroup>
+
+### Install peer dependencies
+
+Material renderers require Material-UI v7 and its dependencies:
+
+<CodeGroup>
+
+```bash npm
+npm install @mui/material@^7.0.0 @mui/icons-material@^7.0.0 @emotion/react@^11.5.0 @emotion/styled@^11.3.0 @mui/x-date-pickers@^8.0.0
+```
+
+```bash pnpm
+pnpm add @mui/material@^7.0.0 @mui/icons-material@^7.0.0 @emotion/react@^11.5.0 @emotion/styled@^11.3.0 @mui/x-date-pickers@^8.0.0
+```
+
+```bash yarn
+yarn add @mui/material@^7.0.0 @mui/icons-material@^7.0.0 @emotion/react@^11.5.0 @emotion/styled@^11.3.0 @mui/x-date-pickers@^8.0.0
+```
+
+</CodeGroup>
+
+### Supported React versions
+
+React 16.12.0+ || 17.x || 18.x || 19.x
+
+  </Tab>
+  <Tab title="Vanilla Renderers">
+
+### Install JSON Forms packages
+
+<CodeGroup>
+
+```bash npm
+npm install @jsonforms/core@3.7.0 @jsonforms/react@3.7.0 @jsonforms/vanilla-renderers@3.7.0
+```
+
+```bash pnpm
+pnpm add @jsonforms/core@3.7.0 @jsonforms/react@3.7.0 @jsonforms/vanilla-renderers@3.7.0
+```
+
+```bash yarn
+yarn add @jsonforms/core@3.7.0 @jsonforms/react@3.7.0 @jsonforms/vanilla-renderers@3.7.0
+```
+
+</CodeGroup>
+
+### No additional dependencies required
+
+Vanilla renderers use plain HTML5 controls and don't require a UI framework.
+
+<Note>
+You'll need to style the controls yourself or use the included base CSS.
+</Note>
+
+### Supported React versions
+
+React 16.12.0+ || 17.x || 18.x || 19.x
+
+  </Tab>
+</Tabs>
+
+## Angular
+
+JSON Forms provides Material Design renderers for Angular using Angular Material.
+
+### Install JSON Forms packages
+
+<CodeGroup>
+
+```bash npm
+npm install @jsonforms/core@3.7.0 @jsonforms/angular@3.7.0 @jsonforms/angular-material@3.7.0
+```
+
+```bash pnpm
+pnpm add @jsonforms/core@3.7.0 @jsonforms/angular@3.7.0 @jsonforms/angular-material@3.7.0
+```
+
+```bash yarn
+yarn add @jsonforms/core@3.7.0 @jsonforms/angular@3.7.0 @jsonforms/angular-material@3.7.0
+```
+
+</CodeGroup>
+
+### Install peer dependencies
+
+<CodeGroup>
+
+```bash npm
+npm install @angular/material@^19.0.0 @angular/cdk@^19.0.0 @angular/animations@^19.0.0 dayjs@^1.11.10
+```
+
+```bash pnpm
+pnpm add @angular/material@^19.0.0 @angular/cdk@^19.0.0 @angular/animations@^19.0.0 dayjs@^1.11.10
+```
+
+```bash yarn
+yarn add @angular/material@^19.0.0 @angular/cdk@^19.0.0 @angular/animations@^19.0.0 dayjs@^1.11.10
+```
+
+</CodeGroup>
+
+### Supported Angular versions
+
+- Angular 19.x || 20.x || 21.x
+- RxJS 6.6.0+ || 7.4.0+
+
+<Warning>
+Angular Material, CDK, Forms, and Platform Browser must all use the same major version as your Angular Core installation.
+</Warning>
+
+### Import modules
+
+Add JSON Forms modules to your application:
+
+```typescript app.module.ts
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { JsonFormsModule } from '@jsonforms/angular';
+import { JsonFormsAngularMaterialModule } from '@jsonforms/angular-material';
+
+@NgModule({
+  imports: [
+    BrowserModule,
+    BrowserAnimationsModule,
+    JsonFormsModule,
+    JsonFormsAngularMaterialModule,
+  ],
+  // ...
+})
+export class AppModule {}
+```
+
+## Vue
+
+JSON Forms provides two renderer sets for Vue 3:
+
+- **Vuetify Renderers** - Based on Vuetify 3
+- **Vanilla Renderers** - Lightweight HTML5 controls
+
+<Tabs>
+  <Tab title="Vuetify Renderers">
+
+### Install JSON Forms packages
+
+<CodeGroup>
+
+```bash npm
+npm install @jsonforms/core@3.7.0 @jsonforms/vue@3.7.0 @jsonforms/vue-vuetify@3.7.0
+```
+
+```bash pnpm
+pnpm add @jsonforms/core@3.7.0 @jsonforms/vue@3.7.0 @jsonforms/vue-vuetify@3.7.0
+```
+
+```bash yarn
+yarn add @jsonforms/core@3.7.0 @jsonforms/vue@3.7.0 @jsonforms/vue-vuetify@3.7.0
+```
+
+</CodeGroup>
+
+### Install peer dependencies
+
+<CodeGroup>
+
+```bash npm
+npm install vuetify@^3.9.0 vue@^3.5.0 ajv@^8.6.1 dayjs@^1.10.6 maska@^2.1.11 lodash@^4.17.21
+```
+
+```bash pnpm
+pnpm add vuetify@^3.9.0 vue@^3.5.0 ajv@^8.6.1 dayjs@^1.10.6 maska@^2.1.11 lodash@^4.17.21
+```
+
+```bash yarn
+yarn add vuetify@^3.9.0 vue@^3.5.0 ajv@^8.6.1 dayjs@^1.10.6 maska@^2.1.11 lodash@^4.17.21
+```
+
+</CodeGroup>
+
+### Supported Vue versions
+
+Vue 3.5.0+
+
+### Set up Vuetify
+
+Configure Vuetify in your application:
+
+```typescript main.ts
+import { createApp } from 'vue';
+import { createVuetify } from 'vuetify';
+import 'vuetify/styles';
+import '@mdi/font/css/materialdesignicons.css';
+import App from './App.vue';
+
+const vuetify = createVuetify();
+
+const app = createApp(App);
+app.use(vuetify);
+app.mount('#app');
+```
+
+  </Tab>
+  <Tab title="Vanilla Renderers">
+
+### Install JSON Forms packages
+
+<CodeGroup>
+
+```bash npm
+npm install @jsonforms/core@3.7.0 @jsonforms/vue@3.7.0 @jsonforms/vue-vanilla@3.7.0
+```
+
+```bash pnpm
+pnpm add @jsonforms/core@3.7.0 @jsonforms/vue@3.7.0 @jsonforms/vue-vanilla@3.7.0
+```
+
+```bash yarn
+yarn add @jsonforms/core@3.7.0 @jsonforms/vue@3.7.0 @jsonforms/vue-vanilla@3.7.0
+```
+
+</CodeGroup>
+
+### Install peer dependencies
+
+<CodeGroup>
+
+```bash npm
+npm install vue@^3.5.0
+```
+
+```bash pnpm
+pnpm add vue@^3.5.0
+```
+
+```bash yarn
+yarn add vue@^3.5.0
+```
+
+</CodeGroup>
+
+### Import styles (optional)
+
+Vanilla renderers include optional base styles:
+
+```typescript main.ts
+import '@jsonforms/vue-vanilla/vanilla.css';
+```
+
+  </Tab>
+</Tabs>
+
+## Core package only
+
+If you're building custom renderers or need just the core utilities:
+
+<CodeGroup>
+
+```bash npm
+npm install @jsonforms/core@3.7.0
+```
+
+```bash pnpm
+pnpm add @jsonforms/core@3.7.0
+```
+
+```bash yarn
+yarn add @jsonforms/core@3.7.0
+```
+
+</CodeGroup>
+
+Core dependencies:
+- `ajv@^8.6.1` - JSON Schema validation
+- `ajv-formats@^2.1.0` - Additional format validators
+- `lodash@^4.17.21` - Utility functions
+
+## TypeScript support
+
+All JSON Forms packages include TypeScript type definitions. No additional `@types` packages are needed.
+
+```typescript
+import { JsonSchema, UISchemaElement } from '@jsonforms/core';
+import { JsonForms } from '@jsonforms/react';
+```
+
+## Version compatibility
+
+<Warning>
+Always use the same version across all JSON Forms packages to ensure compatibility.
+</Warning>
+
+| Package | Version | Status |
+|---------|---------|--------|
+| @jsonforms/core | 3.7.0 | Current |
+| @jsonforms/react | 3.7.0 | Current |
+| @jsonforms/angular | 3.7.0 | Current |
+| @jsonforms/vue | 3.7.0 | Current |
+| @jsonforms/material-renderers | 3.7.0 | Current |
+| @jsonforms/vanilla-renderers | 3.7.0 | Current |
+| @jsonforms/angular-material | 3.7.0 | Current |
+| @jsonforms/vue-vuetify | 3.7.0 | Current |
+| @jsonforms/vue-vanilla | 3.7.0 | Current |
+
+## Seed projects
+
+For a complete working setup, check out the official seed repositories:
+
+<CardGroup cols={3}>
+  <Card title="React Seed" icon="react" href="https://github.com/eclipsesource/jsonforms-react-seed">
+    Complete React starter with Material renderers
+  </Card>
+  <Card title="Angular Seed" icon="angular" href="https://github.com/eclipsesource/jsonforms-angular-seed">
+    Complete Angular starter with Material renderers
+  </Card>
+  <Card title="Vue Seed" icon="vuejs" href="https://github.com/eclipsesource/jsonforms-vue-seed">
+    Complete Vue 3 starter with Vuetify renderers
+  </Card>
+</CardGroup>
+
+## Migration from older versions
+
+If you're upgrading from an earlier version of JSON Forms:
+
+1. Check the [migration guide](https://github.com/eclipsesource/jsonforms/blob/master/MIGRATION.md) for breaking changes
+2. Update all JSON Forms packages to the same version
+3. Update peer dependencies to supported versions
+4. Test your forms thoroughly after upgrading
+
+<Note>
+Node.js 22+ is required for development. Node.js 23 is not currently supported.
+</Note>
+
+## Next steps
+
+Now that you've installed JSON Forms, you're ready to build your first form:
+
+- Follow the [quickstart guide](/quickstart) to create your first form
+- Learn about [core concepts](/concepts/overview) like schemas and renderers
+- Explore the [API reference](/api/core/overview) for detailed documentation

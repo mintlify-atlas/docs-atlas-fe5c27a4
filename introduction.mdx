@@ -1,0 +1,158 @@
+---
+title: Introduction to JSON Forms
+description: JSON Forms eliminates the tedious task of writing fully-featured forms by hand by leveraging JSON Schema and framework bindings for React, Angular, and Vue.
+---
+
+# JSON Forms - More Forms. Less Code
+
+**Complex forms in the blink of an eye**
+
+JSON Forms eliminates the tedious task of writing fully-featured forms by hand by leveraging the capabilities of JSON, JSON Schema and Javascript. Generate forms from your data models and focus on what matters: your application logic.
+
+## Why JSON Forms?
+
+JSON Forms is a declarative framework for efficiently building complex forms with minimal effort. Instead of writing form markup by hand, you describe the structure of your data with JSON Schema and optionally customize the layout with UI Schema.
+
+### Key features
+
+- **Framework Support**: First-class bindings for React, Angular, and Vue
+- **Declarative**: Define forms using JSON Schema and UI Schema
+- **Validation**: Built-in validation powered by AJV
+- **Customizable**: Multiple renderer sets including Material Design, Vanilla HTML, and Vuetify
+- **Extensible**: Create custom renderers and controls for your specific needs
+- **Type Safe**: Full TypeScript support across all packages
+
+## Quick overview
+
+JSON Forms uses two key concepts:
+
+1. **JSON Schema** - Describes the structure and validation rules of your data
+2. **UI Schema** - (Optional) Customizes the layout and appearance of the form
+
+<CodeGroup>
+
+```json Data Schema
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "birthDate": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": ["name", "email"]
+}
+```
+
+```json UI Schema
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/name"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/email"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/birthDate"
+    }
+  ]
+}
+```
+
+</CodeGroup>
+
+<Note>
+The UI Schema is optional. If you don't provide one, JSON Forms will automatically generate a default layout based on your JSON Schema.
+</Note>
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build your first JSON Form in minutes with our step-by-step guide
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Install JSON Forms for React, Angular, or Vue
+  </Card>
+  <Card title="Core concepts" icon="book" href="/core-concepts">
+    Learn about schemas, renderers, and customization
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>
+
+## Architecture
+
+JSON Forms is built with a modular architecture:
+
+- **@jsonforms/core** - Framework-agnostic core library with validation and utilities
+- **Framework bindings** - React, Angular, and Vue integrations
+- **Renderer sets** - Pre-built UI components for different design systems
+
+```mermaid
+graph TD
+    A[Your Application] --> B[@jsonforms/react]
+    A --> C[@jsonforms/angular]
+    A --> D[@jsonforms/vue]
+    B --> E[@jsonforms/core]
+    C --> E
+    D --> E
+    B --> F[@jsonforms/material-renderers]
+    B --> G[@jsonforms/vanilla-renderers]
+    C --> H[@jsonforms/angular-material]
+    D --> I[@jsonforms/vue-vuetify]
+```
+
+## Framework support
+
+JSON Forms provides first-class support for the most popular frontend frameworks:
+
+| Framework | Package | Renderer Sets |
+|-----------|---------|---------------|
+| React | `@jsonforms/react` | Material, Vanilla |
+| Angular | `@jsonforms/angular` | Material |
+| Vue 3 | `@jsonforms/vue` | Vanilla, Vuetify |
+
+## Next steps
+
+<Steps>
+  <Step title="Try the quickstart">
+    Follow our [quickstart guide](/quickstart) to build your first form in minutes
+  </Step>
+  <Step title="Choose your framework">
+    Check the [installation guide](/installation) for framework-specific setup instructions
+  </Step>
+  <Step title="Explore examples">
+    Browse the examples to see JSON Forms in action with different use cases
+  </Step>
+  <Step title="Customize">
+    Learn how to create custom renderers for your specific requirements
+  </Step>
+</Steps>
+
+## Community and support
+
+JSON Forms is developed by [EclipseSource](https://eclipsesource.com) and the open source community.
+
+- **GitHub**: [github.com/eclipsesource/jsonforms](https://github.com/eclipsesource/jsonforms)
+- **Discussions**: [JSON Forms Discourse](https://jsonforms.discourse.group)
+- **Issues**: [Report bugs or request features](https://github.com/eclipsesource/jsonforms/issues/new/choose)
+- **Professional Support**: [Enterprise support available](https://jsonforms.io/support)
+
+<Warning>
+When migrating from an older version of JSON Forms, please check the [migration guide](https://github.com/eclipsesource/jsonforms/blob/master/MIGRATION.md) for breaking changes and upgrade instructions.
+</Warning>

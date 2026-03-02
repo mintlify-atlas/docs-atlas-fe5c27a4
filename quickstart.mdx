@@ -1,80 +1,850 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Build your first JSON Form in minutes. Get from zero to a working form with React, Angular, or Vue using Material renderers.
 ---
 
-## Get started in three steps
+# Quickstart
 
-Get your documentation site running locally and make your first customization.
+Get started with JSON Forms in minutes. This guide will walk you through creating your first form from installation to a working example.
 
-### Step 1: Set up your local environment
+## What you'll build
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+A simple task management form with:
+- Text input for task name
+- Checkbox for completion status
+- Date picker for due date
+- Dropdown for recurrence options
 
-### Step 2: Deploy your changes
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
+- Node.js 22+ installed
+- Basic knowledge of React, Angular, or Vue
+- A package manager (npm, yarn, or pnpm)
+
+<Tabs>
+  <Tab title="React">
+
+## React Setup
+
+<Steps>
+  <Step title="Install dependencies">
+    Install JSON Forms Core, React bindings, and Material renderers:
+
+    <CodeGroup>
+
+```bash npm
+npm install @jsonforms/core @jsonforms/react @jsonforms/material-renderers
+```
+
+```bash yarn
+yarn add @jsonforms/core @jsonforms/react @jsonforms/material-renderers
+```
+
+```bash pnpm
+pnpm add @jsonforms/core @jsonforms/react @jsonforms/material-renderers
+```
+
+    </CodeGroup>
+
+    Install Material-UI peer dependencies:
+
+    <CodeGroup>
+
+```bash npm
+npm install @mui/material @mui/icons-material @emotion/react @emotion/styled @mui/x-date-pickers
+```
+
+```bash yarn
+yarn add @mui/material @mui/icons-material @emotion/react @emotion/styled @mui/x-date-pickers
+```
+
+```bash pnpm
+pnpm add @mui/material @mui/icons-material @emotion/react @emotion/styled @mui/x-date-pickers
+```
+
+    </CodeGroup>
+  </Step>
+
+  <Step title="Create your JSON Schema">
+    Define the structure and validation rules for your data:
+
+    ```typescript
+    const schema = {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          minLength: 1,
+        },
+        done: {
+          type: 'boolean',
+        },
+        due_date: {
+          type: 'string',
+          format: 'date',
+        },
+        recurrence: {
+          type: 'string',
+          enum: ['Never', 'Daily', 'Weekly', 'Monthly'],
+        },
+      },
+      required: ['name', 'due_date'],
+    };
+    ```
+
+    <Note>
+    The schema uses JSON Schema standard. The `type` defines data types, `minLength` adds validation, and `required` marks mandatory fields.
+    </Note>
+  </Step>
+
+  <Step title="Create your UI Schema (optional)">
+    Customize the layout of your form:
+
+    ```typescript
+    const uischema = {
+      type: 'VerticalLayout',
+      elements: [
+        {
+          type: 'Control',
+          label: false,
+          scope: '#/properties/done',
+        },
+        {
+          type: 'Control',
+          scope: '#/properties/name',
+        },
+        {
+          type: 'HorizontalLayout',
+          elements: [
+            {
+              type: 'Control',
+              scope: '#/properties/due_date',
+            },
+            {
+              type: 'Control',
+              scope: '#/properties/recurrence',
+            },
+          ],
+        },
+      ],
+    };
+    ```
+
+    <Note>
+    The UI Schema is optional. Without it, JSON Forms will automatically generate a layout based on your JSON Schema.
+    </Note>
+  </Step>
+
+  <Step title="Render the form">
+    Create your component using the `JsonForms` component:
+
+    ```tsx App.tsx
+    import React, { useState } from 'react';
+    import {
+      materialRenderers,
+      materialCells,
+    } from '@jsonforms/material-renderers';
+    import { JsonForms } from '@jsonforms/react';
+
+    const schema = {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          minLength: 1,
+        },
+        done: {
+          type: 'boolean',
+        },
+        due_date: {
+          type: 'string',
+          format: 'date',
+        },
+        recurrence: {
+          type: 'string',
+          enum: ['Never', 'Daily', 'Weekly', 'Monthly'],
+        },
+      },
+      required: ['name', 'due_date'],
+    };
+
+    const uischema = {
+      type: 'VerticalLayout',
+      elements: [
+        {
+          type: 'Control',
+          label: false,
+          scope: '#/properties/done',
+        },
+        {
+          type: 'Control',
+          scope: '#/properties/name',
+        },
+        {
+          type: 'HorizontalLayout',
+          elements: [
+            {
+              type: 'Control',
+              scope: '#/properties/due_date',
+            },
+            {
+              type: 'Control',
+              scope: '#/properties/recurrence',
+            },
+          ],
+        },
+      ],
+    };
+
+    const initialData = {};
+
+    function App() {
+      const [data, setData] = useState(initialData);
+      
+      return (
+        <JsonForms
+          schema={schema}
+          uischema={uischema}
+          data={data}
+          renderers={materialRenderers}
+          cells={materialCells}
+          onChange={({ data, _errors }) => setData(data)}
+        />
+      );
+    }
+
+    export default App;
+    ```
+  </Step>
+
+  <Step title="Run your application">
+    Start your development server and view your form:
+
+    ```bash
+    npm start
+    ```
+
+    You should see a form with all the fields defined in your schema, styled with Material-UI components.
+  </Step>
+</Steps>
+
+### Understanding the code
+
+The `JsonForms` component requires:
+
+- **schema** - Defines the data structure and validation
+- **uischema** - (Optional) Customizes the form layout
+- **data** - Current form data
+- **renderers** - Set of UI components to render controls
+- **cells** - Table cell renderers for array layouts
+- **onChange** - Callback when data changes
+
+<Accordion title="View complete working example">
+```tsx
+import React, { useState } from 'react';
+import {
+  materialRenderers,
+  materialCells,
+} from '@jsonforms/material-renderers';
+import { JsonForms } from '@jsonforms/react';
+
+const schema = {
+  type: 'object',
+  properties: {
+    name: {
+      type: 'string',
+      minLength: 1,
+    },
+    done: {
+      type: 'boolean',
+    },
+    due_date: {
+      type: 'string',
+      format: 'date',
+    },
+    recurrence: {
+      type: 'string',
+      enum: ['Never', 'Daily', 'Weekly', 'Monthly'],
+    },
+  },
+  required: ['name', 'due_date'],
+};
+
+const uischema = {
+  type: 'VerticalLayout',
+  elements: [
+    {
+      type: 'Control',
+      label: false,
+      scope: '#/properties/done',
+    },
+    {
+      type: 'Control',
+      scope: '#/properties/name',
+    },
+    {
+      type: 'HorizontalLayout',
+      elements: [
+        {
+          type: 'Control',
+          scope: '#/properties/due_date',
+        },
+        {
+          type: 'Control',
+          scope: '#/properties/recurrence',
+        },
+      ],
+    },
+  ],
+};
+
+const initialData = {};
+
+function App() {
+  const [data, setData] = useState(initialData);
+  
+  return (
+    <div style={{ padding: '2rem' }}>
+      <h1>Task Manager</h1>
+      <JsonForms
+        schema={schema}
+        uischema={uischema}
+        data={data}
+        renderers={materialRenderers}
+        cells={materialCells}
+        onChange={({ data, _errors }) => setData(data)}
+      />
+      <pre>{JSON.stringify(data, null, 2)}</pre>
+    </div>
+  );
+}
+
+export default App;
+```
 </Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  </Tab>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Tab title="Angular">
 
-### Step 3: Go live
+## Angular Setup
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Steps>
+  <Step title="Install dependencies">
+    Install JSON Forms packages:
+
+    <CodeGroup>
+
+```bash npm
+npm install @jsonforms/core @jsonforms/angular @jsonforms/angular-material
+```
+
+```bash yarn
+yarn add @jsonforms/core @jsonforms/angular @jsonforms/angular-material
+```
+
+```bash pnpm
+pnpm add @jsonforms/core @jsonforms/angular @jsonforms/angular-material
+```
+
+    </CodeGroup>
+
+    Install Angular Material peer dependencies:
+
+    <CodeGroup>
+
+```bash npm
+npm install @angular/material @angular/cdk @angular/animations dayjs
+```
+
+```bash yarn
+yarn add @angular/material @angular/cdk @angular/animations dayjs
+```
+
+```bash pnpm
+pnpm add @angular/material @angular/cdk @angular/animations dayjs
+```
+
+    </CodeGroup>
+  </Step>
+
+  <Step title="Import JSON Forms modules">
+    Add JSON Forms modules to your application:
+
+    ```typescript app.module.ts
+    import { NgModule } from '@angular/core';
+    import { BrowserModule } from '@angular/platform-browser';
+    import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+    import { JsonFormsModule } from '@jsonforms/angular';
+    import { JsonFormsAngularMaterialModule } from '@jsonforms/angular-material';
+    import { AppComponent } from './app.component';
+
+    @NgModule({
+      declarations: [AppComponent],
+      imports: [
+        BrowserModule,
+        BrowserAnimationsModule,
+        JsonFormsModule,
+        JsonFormsAngularMaterialModule,
+      ],
+      bootstrap: [AppComponent],
+    })
+    export class AppModule {}
+    ```
+  </Step>
+
+  <Step title="Define your schemas">
+    Create the JSON Schema and UI Schema in your component:
+
+    ```typescript app.component.ts
+    import { Component } from '@angular/core';
+
+    @Component({
+      selector: 'app-root',
+      template: `
+        <jsonforms
+          [data]="data"
+          [schema]="schema"
+          [uischema]="uischema"
+          (dataChange)="onDataChange($event)"
+        ></jsonforms>
+      `,
+    })
+    export class AppComponent {
+      data = {};
+      
+      schema = {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            minLength: 1,
+          },
+          done: {
+            type: 'boolean',
+          },
+          due_date: {
+            type: 'string',
+            format: 'date',
+          },
+          recurrence: {
+            type: 'string',
+            enum: ['Never', 'Daily', 'Weekly', 'Monthly'],
+          },
+        },
+        required: ['name', 'due_date'],
+      };
+
+      uischema = {
+        type: 'VerticalLayout',
+        elements: [
+          {
+            type: 'Control',
+            label: false,
+            scope: '#/properties/done',
+          },
+          {
+            type: 'Control',
+            scope: '#/properties/name',
+          },
+          {
+            type: 'HorizontalLayout',
+            elements: [
+              {
+                type: 'Control',
+                scope: '#/properties/due_date',
+              },
+              {
+                type: 'Control',
+                scope: '#/properties/recurrence',
+              },
+            ],
+          },
+        ],
+      };
+
+      onDataChange(data: any) {
+        this.data = data;
+        console.log('Form data:', data);
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Run your application">
+    Start your development server:
+
+    ```bash
+    ng serve
+    ```
+
+    Navigate to `http://localhost:4200` to see your form.
+  </Step>
+</Steps>
+
+<Note>
+For standalone components in Angular 14+, you can import JSON Forms modules directly in your component instead of using NgModule.
+</Note>
+
+  </Tab>
+
+  <Tab title="Vue">
+
+## Vue Setup
+
+<Steps>
+  <Step title="Install dependencies">
+    Install JSON Forms packages:
+
+    <CodeGroup>
+
+```bash npm
+npm install @jsonforms/core @jsonforms/vue @jsonforms/vue-vuetify
+```
+
+```bash yarn
+yarn add @jsonforms/core @jsonforms/vue @jsonforms/vue-vuetify
+```
+
+```bash pnpm
+pnpm add @jsonforms/core @jsonforms/vue @jsonforms/vue-vuetify
+```
+
+    </CodeGroup>
+
+    Install Vuetify peer dependencies:
+
+    <CodeGroup>
+
+```bash npm
+npm install vuetify vue ajv dayjs maska lodash
+```
+
+```bash yarn
+yarn add vuetify vue ajv dayjs maska lodash
+```
+
+```bash pnpm
+pnpm add vuetify vue ajv dayjs maska lodash
+```
+
+    </CodeGroup>
+  </Step>
+
+  <Step title="Set up Vuetify">
+    Configure Vuetify in your main application file:
+
+    ```typescript main.ts
+    import { createApp } from 'vue';
+    import { createVuetify } from 'vuetify';
+    import 'vuetify/styles';
+    import '@mdi/font/css/materialdesignicons.css';
+    import App from './App.vue';
+
+    const vuetify = createVuetify();
+
+    const app = createApp(App);
+    app.use(vuetify);
+    app.mount('#app');
+    ```
+  </Step>
+
+  <Step title="Create your component">
+    Build your form component with JSON Forms:
+
+    ```vue App.vue
+    <template>
+      <v-app>
+        <v-container>
+          <h1>Task Manager</h1>
+          <json-forms
+            :data="data"
+            :schema="schema"
+            :uischema="uischema"
+            :renderers="renderers"
+            @change="onChange"
+          />
+          <pre>{{ JSON.stringify(data, null, 2) }}</pre>
+        </v-container>
+      </v-app>
+    </template>
+
+    <script setup lang="ts">
+    import { ref } from 'vue';
+    import { JsonForms } from '@jsonforms/vue';
+    import { vuetifyRenderers } from '@jsonforms/vue-vuetify';
+
+    const data = ref({});
+    const renderers = vuetifyRenderers;
+
+    const schema = {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          minLength: 1,
+        },
+        done: {
+          type: 'boolean',
+        },
+        due_date: {
+          type: 'string',
+          format: 'date',
+        },
+        recurrence: {
+          type: 'string',
+          enum: ['Never', 'Daily', 'Weekly', 'Monthly'],
+        },
+      },
+      required: ['name', 'due_date'],
+    };
+
+    const uischema = {
+      type: 'VerticalLayout',
+      elements: [
+        {
+          type: 'Control',
+          label: false,
+          scope: '#/properties/done',
+        },
+        {
+          type: 'Control',
+          scope: '#/properties/name',
+        },
+        {
+          type: 'HorizontalLayout',
+          elements: [
+            {
+              type: 'Control',
+              scope: '#/properties/due_date',
+            },
+            {
+              type: 'Control',
+              scope: '#/properties/recurrence',
+            },
+          ],
+        },
+      ],
+    };
+
+    const onChange = (event: any) => {
+      data.value = event.data;
+    };
+    </script>
+    ```
+  </Step>
+
+  <Step title="Run your application">
+    Start your development server:
+
+    ```bash
+    npm run dev
+    ```
+
+    Your form should now be running with Vuetify styling.
+  </Step>
+</Steps>
+
+<Note>
+Vue 3.5.0+ is required. For Vue 2 support, please use JSON Forms version 2.x.
+</Note>
+
+  </Tab>
+</Tabs>
+
+## Understanding the schemas
+
+### JSON Schema
+
+The JSON Schema defines your data model:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",        // Field type
+      "minLength": 1           // Validation rule
+    },
+    "done": {
+      "type": "boolean"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"         // Special format
+    },
+    "recurrence": {
+      "type": "string",
+      "enum": ["Never", "Daily", "Weekly", "Monthly"]  // Dropdown options
+    }
+  },
+  "required": ["name", "due_date"]  // Required fields
+}
+```
+
+Common field types:
+- `string` - Text input
+- `number` / `integer` - Numeric input
+- `boolean` - Checkbox
+- `array` - List of items
+- `object` - Nested object
+
+Common formats:
+- `date` - Date picker
+- `time` - Time picker
+- `date-time` - Date and time picker
+- `email` - Email input with validation
+- `uri` - URL input
+
+### UI Schema
+
+The UI Schema controls layout and appearance:
+
+```json
+{
+  "type": "VerticalLayout",      // Stack elements vertically
+  "elements": [
+    {
+      "type": "Control",         // Single form control
+      "scope": "#/properties/name",  // References JSON Schema property
+      "label": "Task Name"       // Optional custom label
+    },
+    {
+      "type": "HorizontalLayout",  // Stack elements horizontally
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/due_date"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/recurrence"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Available layout types:
+- `VerticalLayout` - Stack elements vertically
+- `HorizontalLayout` - Stack elements horizontally
+- `Group` - Grouped section with optional label
+- `Categorization` - Tabbed interface
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Congratulations! You've created your first JSON Form. Here's what to explore next:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Core Concepts" icon="book" href="/concepts/overview">
+    Learn about JSON Schema, UI Schema, and renderers
+  </Card>
+  <Card title="Custom Renderers" icon="paintbrush" href="/advanced/custom-renderers">
+    Create custom form controls for specific needs
+  </Card>
+  <Card title="Validation" icon="check" href="/advanced/validation">
+    Add custom validation rules and error messages
+  </Card>
+  <Card title="Examples" icon="code" href="/examples/basic-forms">
+    Explore more complex form examples
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Common patterns
+
+### Handling form submission
+
+```tsx
+function App() {
+  const [data, setData] = useState({});
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Form data:', data);
+    // Send to API, validate, etc.
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <JsonForms
+        schema={schema}
+        uischema={uischema}
+        data={data}
+        renderers={materialRenderers}
+        cells={materialCells}
+        onChange={({ data }) => setData(data)}
+      />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+### Accessing validation errors
+
+```tsx
+function App() {
+  const [data, setData] = useState({});
+  const [errors, setErrors] = useState([]);
+  
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={materialRenderers}
+      cells={materialCells}
+      onChange={({ data, errors }) => {
+        setData(data);
+        setErrors(errors || []);
+      }}
+    />
+  );
+}
+```
+
+### Pre-filling form data
+
+```tsx
+const initialData = {
+  name: 'My Task',
+  done: false,
+  due_date: '2024-12-31',
+  recurrence: 'Daily'
+};
+
+function App() {
+  const [data, setData] = useState(initialData);
+  // ... rest of component
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Form fields not rendering">
+    Make sure you've installed all peer dependencies for your chosen renderer set. Check the [installation guide](/installation) for the complete list.
+  </Accordion>
+
+  <Accordion title="Validation not working">
+    JSON Forms uses AJV for validation. Ensure your JSON Schema is valid and uses standard JSON Schema keywords. Custom formats may require additional AJV configuration.
+  </Accordion>
+
+  <Accordion title="TypeScript errors with renderers">
+    Ensure all JSON Forms packages are using the same version. Mismatched versions can cause type conflicts.
+  </Accordion>
+
+  <Accordion title="Styling issues with Material renderers">
+    Make sure you've imported the required styles and configured the theme provider for your UI library (Material-UI, Vuetify, etc.).
+  </Accordion>
+</AccordionGroup>
+
+## Get help
+
+If you encounter issues or have questions:
+
+- Check the [GitHub Issues](https://github.com/eclipsesource/jsonforms/issues) for known problems
+- Ask on the [JSON Forms Discourse](https://jsonforms.discourse.group)
+- Review the [API documentation](/api/core/overview)
+- Explore the [example repository](https://github.com/eclipsesource/jsonforms-react-seed)

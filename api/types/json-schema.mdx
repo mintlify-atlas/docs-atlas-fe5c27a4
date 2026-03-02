@@ -1,0 +1,290 @@
+---
+title: JSON Schema Types
+description: TypeScript type definitions for JSON Schema in JSON Forms
+---
+
+JSON Forms supports both JSON Schema Draft 4 and Draft 7. The main `JsonSchema` type is a union of both versions.
+
+## JsonSchema
+
+Union type for JSON Schema Draft 4 and Draft 7.
+
+<ResponseField name="JsonSchema" type="JsonSchema4 | JsonSchema7">
+  Main type that accepts either JSON Schema Draft 4 or Draft 7 schemas.
+</ResponseField>
+
+---
+
+## JsonSchema7
+
+JSON Schema Draft 7 specification interface.
+
+### Schema metadata
+
+<ResponseField name="$id" type="string">
+  Schema identifier. Tells references where the root of the document is located.
+</ResponseField>
+
+<ResponseField name="$schema" type="string">
+  Meta-schema URL. Recommended to include in the root of any JSON Schema.
+</ResponseField>
+
+<ResponseField name="$ref" type="string">
+  Reference to another schema or schema definition.
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Human-readable title of the schema.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Detailed description of the schema.
+</ResponseField>
+
+<ResponseField name="default" type="any">
+  Default value for the data represented by this schema.
+</ResponseField>
+
+### Type definition
+
+<ResponseField name="type" type="string | string[]">
+  The basic type of this schema. Can be one of: `string`, `number`, `integer`, `object`, `array`, `boolean`, `null`, or an array of these types.
+</ResponseField>
+
+<ResponseField name="enum" type="any[]">
+  Enumerates the allowed values for this schema.
+  
+  ```json
+  {
+    "type": "string",
+    "enum": ["red", "green", "blue"]
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="const" type="any">
+  Specifies a single constant value that the data must match.
+</ResponseField>
+
+### Number validation
+
+<ResponseField name="multipleOf" type="number">
+  The value must be a multiple of this number (e.g., 10 is a multiple of 5).
+</ResponseField>
+
+<ResponseField name="maximum" type="number">
+  Maximum value allowed (inclusive).
+</ResponseField>
+
+<ResponseField name="exclusiveMaximum" type="number">
+  Maximum value allowed (exclusive). Value must be less than this number.
+</ResponseField>
+
+<ResponseField name="minimum" type="number">
+  Minimum value allowed (inclusive).
+</ResponseField>
+
+<ResponseField name="exclusiveMinimum" type="number">
+  Minimum value allowed (exclusive). Value must be greater than this number.
+</ResponseField>
+
+### String validation
+
+<ResponseField name="maxLength" type="number">
+  Maximum length of the string.
+</ResponseField>
+
+<ResponseField name="minLength" type="number">
+  Minimum length of the string.
+</ResponseField>
+
+<ResponseField name="pattern" type="string">
+  Regular expression pattern that the string must match.
+</ResponseField>
+
+<ResponseField name="format" type="string">
+  String format identifier (e.g., `date`, `time`, `date-time`, `email`, `uri`).
+</ResponseField>
+
+### Array validation
+
+<ResponseField name="items" type="JsonSchema7 | JsonSchema7[]">
+  Schema for array items. Can be a single schema or an array of schemas for tuple validation.
+</ResponseField>
+
+<ResponseField name="additionalItems" type="boolean | JsonSchema7">
+  Schema for additional items beyond those defined in `items` array.
+</ResponseField>
+
+<ResponseField name="maxItems" type="number">
+  Maximum number of items in the array.
+</ResponseField>
+
+<ResponseField name="minItems" type="number">
+  Minimum number of items in the array.
+</ResponseField>
+
+<ResponseField name="uniqueItems" type="boolean">
+  Whether all items in the array must be unique.
+</ResponseField>
+
+<ResponseField name="contains" type="JsonSchema7">
+  Schema that at least one array item must match.
+</ResponseField>
+
+### Object validation
+
+<ResponseField name="properties" type="{ [property: string]: JsonSchema7 }">
+  Map of property names to their schemas.
+</ResponseField>
+
+<ResponseField name="patternProperties" type="{ [pattern: string]: JsonSchema7 }">
+  Map of regex patterns to schemas. Properties matching the pattern must validate against the schema.
+</ResponseField>
+
+<ResponseField name="additionalProperties" type="boolean | JsonSchema7">
+  Schema for properties not defined in `properties` or `patternProperties`. If `false`, no additional properties are allowed.
+</ResponseField>
+
+<ResponseField name="required" type="string[]">
+  Array of property names that must be present.
+</ResponseField>
+
+<ResponseField name="propertyNames" type="JsonSchema7">
+  Schema that all property names must match.
+</ResponseField>
+
+<ResponseField name="maxProperties" type="number">
+  Maximum number of properties allowed.
+</ResponseField>
+
+<ResponseField name="minProperties" type="number">
+  Minimum number of properties required.
+</ResponseField>
+
+<ResponseField name="dependencies" type="{ [key: string]: JsonSchema7 | string[] }">
+  Defines dependencies between properties. Value can be an array of required property names or a schema that must validate when the key property is present.
+</ResponseField>
+
+### Schema composition
+
+<ResponseField name="allOf" type="JsonSchema7[]">
+  Data must validate against all of the schemas in this array.
+</ResponseField>
+
+<ResponseField name="anyOf" type="JsonSchema7[]">
+  Data must validate against at least one of the schemas in this array.
+</ResponseField>
+
+<ResponseField name="oneOf" type="JsonSchema7[]">
+  Data must validate against exactly one of the schemas in this array.
+</ResponseField>
+
+<ResponseField name="not" type="JsonSchema7">
+  Data must not validate against this schema.
+</ResponseField>
+
+### Conditional schemas
+
+<ResponseField name="if" type="JsonSchema7">
+  Conditional schema. If data validates against this schema, apply the `then` schema.
+</ResponseField>
+
+<ResponseField name="then" type="JsonSchema7">
+  Schema to apply if the `if` condition is true.
+</ResponseField>
+
+<ResponseField name="else" type="JsonSchema7">
+  Schema to apply if the `if` condition is false.
+</ResponseField>
+
+### Schema reuse
+
+<ResponseField name="definitions" type="{ [key: string]: JsonSchema7 }">
+  Container for reusable schema definitions. Reference with `$ref`.
+  
+  ```json
+  {
+    "definitions": {
+      "address": {
+        "type": "object",
+        "properties": {
+          "street": { "type": "string" },
+          "city": { "type": "string" }
+        }
+      }
+    },
+    "type": "object",
+    "properties": {
+      "billingAddress": { "$ref": "#/definitions/address" }
+    }
+  }
+  ```
+</ResponseField>
+
+### Additional properties
+
+<ResponseField name="readOnly" type="boolean">
+  Indicates the value should not be modified.
+</ResponseField>
+
+<ResponseField name="writeOnly" type="boolean">
+  Indicates the value may be set but should not be retrieved.
+</ResponseField>
+
+<ResponseField name="examples" type="any[]">
+  Array of example values for documentation.
+</ResponseField>
+
+<ResponseField name="errorMessage" type="any">
+  Custom error message for validation failures.
+</ResponseField>
+
+---
+
+## JsonSchema4
+
+JSON Schema Draft 4 specification interface. Similar to Draft 7 with key differences:
+
+### Key differences from Draft 7
+
+- Uses `id` instead of `$id` for schema identifier
+- `exclusiveMaximum` and `exclusiveMinimum` are `boolean` instead of `number`
+- Does not support: `const`, `contains`, `propertyNames`, `if`/`then`/`else`, `readOnly`, `writeOnly`, `examples`
+
+<Info>
+  Most JSON Forms projects use JSON Schema Draft 7. Draft 4 support is maintained for backward compatibility.
+</Info>
+
+---
+
+## Usage example
+
+```typescript
+import { JsonSchema } from '@jsonforms/core';
+
+const schema: JsonSchema = {
+  type: 'object',
+  properties: {
+    name: {
+      type: 'string',
+      minLength: 3,
+      description: 'User name'
+    },
+    age: {
+      type: 'integer',
+      minimum: 0,
+      maximum: 120
+    },
+    email: {
+      type: 'string',
+      format: 'email'
+    },
+    role: {
+      type: 'string',
+      enum: ['admin', 'user', 'guest']
+    }
+  },
+  required: ['name', 'email']
+};
+```

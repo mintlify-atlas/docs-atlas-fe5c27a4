@@ -1,0 +1,451 @@
+---
+title: "Angular Services"
+description: "Angular services for managing JSON Forms state and configuration"
+---
+
+The `@jsonforms/angular` package provides a service for managing form state, renderers, and data updates in Angular applications.
+
+## JsonFormsAngularService
+
+The core service for managing JSON Forms state in Angular. This service handles state management, renderer registration, and data updates.
+
+```typescript
+import { JsonFormsAngularService } from '@jsonforms/angular';
+```
+
+### Initialization
+
+#### init()
+
+Initializes the service with the initial form state.
+
+```typescript
+init(
+  initialState?: JsonFormsSubStates,
+  middleware?: Middleware
+): void
+```
+
+<ParamField path="initialState" type="JsonFormsSubStates">
+  Initial state containing core data, schema, UI schema, renderers, and configuration.
+  
+  Structure:
+  ```typescript
+  {
+    core: {
+      data: any;
+      schema: JsonSchema;
+      uischema: UISchemaElement;
+      validationMode?: ValidationMode;
+      additionalErrors?: ErrorObject[];
+    };
+    renderers?: JsonFormsRendererRegistryEntry[];
+    cells?: JsonFormsCellRendererRegistryEntry[];
+    config?: any;
+    i18n?: JsonFormsI18nState;
+    uischemas?: { tester: UISchemaTester; uischema: UISchemaElement }[];
+    readonly?: boolean;
+  }
+  ```
+</ParamField>
+
+<ParamField path="middleware" type="Middleware" default="defaultMiddleware">
+  Custom middleware function for intercepting state updates.
+</ParamField>
+
+### State Access
+
+#### $state
+
+Observable that emits the current JSON Forms state.
+
+```typescript
+get $state(): Observable<JsonFormsState>
+```
+
+**Example:**
+```typescript
+this.jsonformsService.$state.subscribe(state => {
+  console.log('Current data:', state.jsonforms.core.data);
+  console.log('Errors:', state.jsonforms.core.errors);
+});
+```
+
+#### getState()
+
+Returns a deep clone of the current state.
+
+```typescript
+getState(): JsonFormsState
+```
+
+#### getConfig()
+
+Returns a deep clone of the current configuration.
+
+```typescript
+getConfig(): any
+```
+
+#### getLocale()
+
+Returns the current locale string.
+
+```typescript
+getLocale(): string | undefined
+```
+
+### Data Management
+
+#### setData()
+
+Updates the form data.
+
+```typescript
+setData(data: any): void
+```
+
+<ParamField path="data" type="any" required>
+  The new data to set. Should match the structure defined by the JSON Schema.
+</ParamField>
+
+**Example:**
+```typescript
+this.jsonformsService.setData({
+  name: 'John Doe',
+  age: 30
+});
+```
+
+#### updateCore()
+
+Dispatches a core action to update the state.
+
+```typescript
+updateCore<T extends CoreActions>(coreAction: T): T
+```
+
+<ParamField path="coreAction" type="CoreActions" required>
+  A core action from `@jsonforms/core` Actions.
+</ParamField>
+
+**Example:**
+```typescript
+import { Actions } from '@jsonforms/core';
+
+this.jsonformsService.updateCore(
+  Actions.update('name', () => 'Jane Doe')
+);
+```
+
+#### updateCoreState()
+
+Updates multiple core state properties at once.
+
+```typescript
+updateCoreState(
+  data: any | typeof USE_STATE_VALUE,
+  schema: JsonSchema | typeof USE_STATE_VALUE,
+  uischema: UISchemaElement | typeof USE_STATE_VALUE,
+  ajv: Ajv | typeof USE_STATE_VALUE,
+  validationMode: ValidationMode | typeof USE_STATE_VALUE,
+  additionalErrors: ErrorObject[] | typeof USE_STATE_VALUE
+): void
+```
+
+Use `USE_STATE_VALUE` to keep the current value for a parameter.
+
+### Schema Management
+
+#### setSchema()
+
+Updates the JSON Schema.
+
+```typescript
+setSchema(schema: JsonSchema | undefined): void
+```
+
+<ParamField path="schema" type="JsonSchema">
+  The new JSON Schema. If undefined, a schema will be generated from the data.
+</ParamField>
+
+#### setUiSchema()
+
+Updates the UI Schema.
+
+```typescript
+setUiSchema(uischema: UISchemaElement | undefined): void
+```
+
+<ParamField path="uischema" type="UISchemaElement">
+  The new UI Schema. If undefined, a default UI schema will be generated.
+</ParamField>
+
+#### setUiSchemas()
+
+Sets the UI schema registry for dynamic schema resolution.
+
+```typescript
+setUiSchemas(
+  uischemas: { tester: UISchemaTester; uischema: UISchemaElement }[]
+): void
+```
+
+### Renderer Management
+
+#### addRenderer()
+
+Registers a single renderer.
+
+```typescript
+addRenderer(
+  renderer: JsonFormsBaseRenderer<UISchemaElement>,
+  tester: RankedTester
+): void
+```
+
+<ParamField path="renderer" type="JsonFormsBaseRenderer<UISchemaElement>" required>
+  The renderer component class.
+</ParamField>
+
+<ParamField path="tester" type="RankedTester" required>
+  Function that determines if this renderer can handle a given UI schema element.
+</ParamField>
+
+**Example:**
+```typescript
+this.jsonformsService.addRenderer(
+  MyCustomRenderer,
+  rankWith(3, scopeEndsWith('myField'))
+);
+```
+
+#### setRenderers()
+
+Sets the entire renderer registry, replacing existing renderers.
+
+```typescript
+setRenderers(renderers: JsonFormsRendererRegistryEntry[]): void
+```
+
+<ParamField path="renderers" type="JsonFormsRendererRegistryEntry[]" required>
+  Array of renderer registrations.
+</ParamField>
+
+**Example:**
+```typescript
+import { angularMaterialRenderers } from '@jsonforms/angular-material';
+
+this.jsonformsService.setRenderers(angularMaterialRenderers);
+```
+
+#### removeRenderer()
+
+Removes a renderer by its tester function.
+
+```typescript
+removeRenderer(tester: RankedTester): void
+```
+
+<ParamField path="tester" type="RankedTester" required>
+  The tester function of the renderer to remove.
+</ParamField>
+
+### Configuration
+
+#### updateConfig()
+
+Updates the global configuration.
+
+```typescript
+updateConfig<T extends SetConfigAction>(setConfigAction: T): T
+```
+
+<ParamField path="setConfigAction" type="SetConfigAction" required>
+  A config action created with `Actions.setConfig()`.
+</ParamField>
+
+**Example:**
+```typescript
+import { Actions } from '@jsonforms/core';
+
+this.jsonformsService.updateConfig(
+  Actions.setConfig({
+    restrict: true,
+    trim: false,
+    showUnfocusedDescription: true
+  })
+);
+```
+
+### Internationalization
+
+#### updateI18n()
+
+Updates internationalization settings.
+
+```typescript
+updateI18n<T extends I18nActions>(i18nAction: T): T
+```
+
+<ParamField path="i18nAction" type="I18nActions" required>
+  An i18n action created with `Actions.updateI18n()`.
+</ParamField>
+
+**Example:**
+```typescript
+import { Actions } from '@jsonforms/core';
+
+this.jsonformsService.updateI18n(
+  Actions.updateI18n(
+    'de-DE',
+    (key, defaultMessage) => translate(key) || defaultMessage,
+    (error, translate) => translate(error.message)
+  )
+);
+```
+
+#### setLocale()
+
+Sets the current locale.
+
+```typescript
+setLocale(locale: string): void
+```
+
+<ParamField path="locale" type="string" required>
+  The locale string (e.g., 'en-US', 'de-DE').
+</ParamField>
+
+### Other Methods
+
+#### setReadonly()
+
+Sets whether the entire form is read-only.
+
+```typescript
+setReadonly(readonly: boolean): void
+```
+
+<ParamField path="readonly" type="boolean" required>
+  Whether the form should be read-only.
+</ParamField>
+
+#### updateValidationMode()
+
+Updates the validation mode.
+
+```typescript
+updateValidationMode(validationMode: ValidationMode): void
+```
+
+<ParamField path="validationMode" type="ValidationMode" required>
+  The validation mode: `'ValidateAndShow'`, `'ValidateAndHide'`, or `'NoValidation'`.
+</ParamField>
+
+#### setMiddleware()
+
+Sets custom middleware for state updates.
+
+```typescript
+setMiddleware(middleware: Middleware): void
+```
+
+<ParamField path="middleware" type="Middleware" required>
+  Custom middleware function.
+</ParamField>
+
+#### refresh()
+
+Forces a refresh of the state observable.
+
+```typescript
+refresh(): void
+```
+
+### Deprecated Methods
+
+The following methods are deprecated. Use the recommended alternatives:
+
+- `registerRenderer()` - Use `addRenderer()` instead
+- `registerRenderers()` - Use `setRenderers()` instead
+- `unregisterRenderer()` - Use `removeRenderer()` instead
+- `updateUiSchema()` - Use `setUiSchemas()` instead
+
+## Usage Example
+
+Here's a complete example of using the service in a component:
+
+```typescript
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { JsonFormsAngularService } from '@jsonforms/angular';
+import { Actions } from '@jsonforms/core';
+import { angularMaterialRenderers } from '@jsonforms/angular-material';
+import { Subscription } from 'rxjs';
+
+@Component({
+  selector: 'app-dynamic-form',
+  template: `
+    <button (click)="updateData()">Update Data</button>
+    <button (click)="toggleReadonly()">Toggle Readonly</button>
+    <pre>{{ currentData | json }}</pre>
+  `,
+  providers: [JsonFormsAngularService]
+})
+export class DynamicFormComponent implements OnInit, OnDestroy {
+  private subscription: Subscription;
+  currentData: any = {};
+  isReadonly = false;
+
+  constructor(private jsonformsService: JsonFormsAngularService) {}
+
+  ngOnInit() {
+    // Initialize the service
+    this.jsonformsService.init({
+      core: {
+        data: { name: '', email: '' },
+        schema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            email: { type: 'string', format: 'email' }
+          },
+          required: ['name', 'email']
+        },
+        uischema: {
+          type: 'VerticalLayout',
+          elements: [
+            { type: 'Control', scope: '#/properties/name' },
+            { type: 'Control', scope: '#/properties/email' }
+          ]
+        }
+      },
+      renderers: angularMaterialRenderers
+    });
+
+    // Subscribe to state changes
+    this.subscription = this.jsonformsService.$state.subscribe(state => {
+      this.currentData = state.jsonforms.core.data;
+    });
+  }
+
+  updateData() {
+    this.jsonformsService.updateCore(
+      Actions.update('name', () => 'John Doe')
+    );
+  }
+
+  toggleReadonly() {
+    this.isReadonly = !this.isReadonly;
+    this.jsonformsService.setReadonly(this.isReadonly);
+  }
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+  }
+}
+```
+
+<Note>
+  The `JsonFormsAngularService` is automatically provided by the `JsonForms` component. You only need to manually provide it if you're managing state independently.
+</Note>

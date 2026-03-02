@@ -1,0 +1,565 @@
+---
+title: Angular Integration
+description: Integrate JSON Forms into your Angular application with services, modules, and reactive state management
+---
+
+# Angular Integration
+
+JSON Forms provides first-class Angular support through the `@jsonforms/angular` package, leveraging Angular's dependency injection and reactive patterns.
+
+## Installation
+
+<Steps>
+  <Step title="Install Core Dependencies">
+    ```bash
+    npm install @jsonforms/core @jsonforms/angular
+    ```
+  </Step>
+  
+  <Step title="Install Renderer Set">
+    Install the Angular Material renderer set:
+    
+    ```bash
+    npm install @jsonforms/angular-material
+    ```
+  </Step>
+</Steps>
+
+## Module Setup
+
+### Standalone Component (Angular 14+)
+
+For modern Angular applications using standalone components:
+
+```typescript
+import { Component } from '@angular/core';
+import { JsonFormsModule } from '@jsonforms/angular';
+import { angularMaterialRenderers } from '@jsonforms/angular-material';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [JsonFormsModule],
+  template: `
+    <jsonforms
+      [data]="data"
+      [schema]="schema"
+      [uischema]="uischema"
+      [renderers]="renderers"
+      (dataChange)="onDataChange($event)"
+      (errors)="onErrors($event)"
+    ></jsonforms>
+  `
+})
+export class AppComponent {
+  renderers = angularMaterialRenderers;
+  data = {};
+  
+  schema = {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      email: { type: 'string', format: 'email' }
+    },
+    required: ['name', 'email']
+  };
+  
+  uischema = {
+    type: 'VerticalLayout',
+    elements: [
+      { type: 'Control', scope: '#/properties/name' },
+      { type: 'Control', scope: '#/properties/email' }
+    ]
+  };
+  
+  onDataChange(data: any) {
+    console.log('Data changed:', data);
+    this.data = data;
+  }
+  
+  onErrors(errors: any[]) {
+    console.log('Validation errors:', errors);
+  }
+}
+```
+
+### NgModule (Traditional)
+
+For applications using NgModules:
+
+```typescript
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { JsonFormsModule } from '@jsonforms/angular';
+import { JsonFormsAngularMaterialModule } from '@jsonforms/angular-material';
+
+@NgModule({
+  imports: [
+    BrowserModule,
+    JsonFormsModule,
+    JsonFormsAngularMaterialModule
+  ],
+  declarations: [AppComponent],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+```
+
+## JsonForms Component
+
+The `<jsonforms>` component is the main entry point for rendering forms.
+
+### Component Inputs
+
+```typescript
+@Component({
+  selector: 'jsonforms'
+})
+export class JsonForms {
+  // Core inputs
+  @Input() data: any;
+  @Input() schema: JsonSchema;
+  @Input() uischema: UISchemaElement;
+  @Input() renderers: JsonFormsRendererRegistryEntry[];
+  
+  // Optional inputs
+  @Input() uischemas?: { tester: UISchemaTester; uischema: UISchemaElement }[];
+  @Input() readonly?: boolean;
+  @Input() validationMode?: ValidationMode;  // 'ValidateAndShow' | 'ValidateAndHide' | 'NoValidation'
+  @Input() ajv?: Ajv;
+  @Input() config?: any;
+  @Input() i18n?: JsonFormsI18nState;
+  @Input() additionalErrors?: ErrorObject[];
+  @Input() middleware?: Middleware;
+  
+  // Outputs
+  @Output() dataChange = new EventEmitter<any>();
+  @Output() errors = new EventEmitter<ErrorObject[]>();
+}
+```
+
+### Complete Example
+
+```typescript
+import { Component } from '@angular/core';
+import { ValidationMode } from '@jsonforms/core';
+import type Ajv from 'ajv';
+
+@Component({
+  selector: 'app-form',
+  template: `
+    <jsonforms
+      [data]="formData"
+      [schema]="schema"
+      [uischema]="uischema"
+      [renderers]="renderers"
+      [readonly]="isReadonly"
+      [validationMode]="validationMode"
+      [config]="config"
+      [i18n]="i18nConfig"
+      (dataChange)="handleDataChange($event)"
+      (errors)="handleErrors($event)"
+    ></jsonforms>
+  `
+})
+export class FormComponent {
+  formData = {
+    name: 'John Doe',
+    email: 'john@example.com'
+  };
+  
+  schema = { /* ... */ };
+  uischema = { /* ... */ };
+  renderers = angularMaterialRenderers;
+  
+  isReadonly = false;
+  validationMode: ValidationMode = 'ValidateAndShow';
+  
+  config = {
+    restrict: true,
+    trim: false,
+    showUnfocusedDescription: false
+  };
+  
+  i18nConfig = {
+    locale: 'en-US',
+    translate: (key: string, defaultMessage: string) => {
+      // Return translated message
+      return defaultMessage;
+    }
+  };
+  
+  handleDataChange(data: any) {
+    this.formData = data;
+    // Perform additional operations
+  }
+  
+  handleErrors(errors: any[]) {
+    if (errors && errors.length > 0) {
+      console.error('Validation errors:', errors);
+    }
+  }
+}
+```
+
+<Note>
+The `dataChange` and `errors` outputs emit whenever the form data or validation state changes. The component automatically handles change detection.
+</Note>
+
+## JsonFormsAngularService
+
+The `JsonFormsAngularService` provides programmatic control over JSON Forms state through dependency injection.
+
+### Service API
+
+```typescript
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { JsonFormsState } from '@jsonforms/core';
+
+@Injectable()
+export class JsonFormsAngularService {
+  // Initialize the service
+  init(initialState: JsonFormsSubStates, middleware?: Middleware): void;
+  
+  // Observables
+  get $state(): Observable<JsonFormsState>;
+  
+  // State getters
+  getState(): JsonFormsState;
+  getConfig(): any;
+  getLocale(): string | undefined;
+  
+  // Data management
+  setData(data: any): void;
+  setSchema(schema: JsonSchema): void;
+  setUiSchema(uischema: UISchemaElement): void;
+  
+  // Renderer management
+  setRenderers(renderers: JsonFormsRendererRegistryEntry[]): void;
+  addRenderer(renderer: any, tester: RankedTester): void;
+  removeRenderer(tester: RankedTester): void;
+  
+  // Configuration
+  updateConfig(action: SetConfigAction): void;
+  setReadonly(readonly: boolean): void;
+  setMiddleware(middleware: Middleware): void;
+  
+  // UI Schema registry
+  setUiSchemas(uischemas: { tester: UISchemaTester; uischema: UISchemaElement }[]): void;
+  
+  // Validation
+  updateValidationMode(validationMode: ValidationMode): void;
+  
+  // Internationalization
+  updateI18n(action: I18nActions): void;
+  setLocale(locale: string): void;
+  
+  // Core actions
+  updateCore(action: CoreActions): void;
+  updateCoreState(
+    data: any,
+    schema: JsonSchema,
+    uischema: UISchemaElement,
+    ajv?: Ajv,
+    validationMode?: ValidationMode,
+    additionalErrors?: ErrorObject[]
+  ): void;
+  
+  // Force refresh
+  refresh(): void;
+}
+```
+
+### Using the Service
+
+```typescript
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { JsonFormsAngularService } from '@jsonforms/angular';
+import { Actions } from '@jsonforms/core';
+import { Subscription } from 'rxjs';
+
+@Component({
+  selector: 'app-advanced-form',
+  template: `<jsonforms-outlet></jsonforms-outlet>`,
+  providers: [JsonFormsAngularService]
+})
+export class AdvancedFormComponent implements OnInit, OnDestroy {
+  private subscription: Subscription;
+  
+  constructor(private jsonformsService: JsonFormsAngularService) {}
+  
+  ngOnInit() {
+    // Initialize the service
+    this.jsonformsService.init({
+      core: {
+        data: { name: '', email: '' },
+        schema: this.schema,
+        uischema: this.uischema
+      },
+      renderers: angularMaterialRenderers
+    });
+    
+    // Subscribe to state changes
+    this.subscription = this.jsonformsService.$state.subscribe(state => {
+      console.log('Current data:', state.jsonforms.core.data);
+      console.log('Errors:', state.jsonforms.core.errors);
+    });
+  }
+  
+  updateData() {
+    // Programmatically update data
+    this.jsonformsService.setData({ name: 'Jane', email: 'jane@example.com' });
+  }
+  
+  toggleReadonly() {
+    this.jsonformsService.setReadonly(true);
+  }
+  
+  addCustomRenderer() {
+    this.jsonformsService.addRenderer(MyCustomRenderer, myCustomTester);
+  }
+  
+  ngOnDestroy() {
+    this.subscription?.unsubscribe();
+  }
+}
+```
+
+### State Observable Pattern
+
+The service exposes state as an RxJS Observable for reactive updates:
+
+```typescript
+import { Component, OnInit } from '@angular/core';
+import { map } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-reactive-form',
+  template: `
+    <div *ngIf="data$ | async as data">
+      <p>Name: {{ data.name }}</p>
+      <p>Email: {{ data.email }}</p>
+    </div>
+    
+    <div *ngIf="errors$ | async as errors">
+      <p *ngFor="let error of errors">{{ error.message }}</p>
+    </div>
+  `
+})
+export class ReactiveFormComponent implements OnInit {
+  data$ = this.jsonformsService.$state.pipe(
+    map(state => state.jsonforms.core.data)
+  );
+  
+  errors$ = this.jsonformsService.$state.pipe(
+    map(state => state.jsonforms.core.errors)
+  );
+  
+  constructor(private jsonformsService: JsonFormsAngularService) {}
+  
+  ngOnInit() {
+    this.jsonformsService.init({
+      core: { /* ... */ },
+      renderers: angularMaterialRenderers
+    });
+  }
+}
+```
+
+## Creating Custom Renderers
+
+Extend `JsonFormsControl` or `JsonFormsBaseRenderer` to create custom renderers:
+
+```typescript
+import { Component } from '@angular/core';
+import { JsonFormsControl } from '@jsonforms/angular';
+import { rankWith, isStringControl } from '@jsonforms/core';
+
+@Component({
+  selector: 'custom-string-renderer',
+  template: `
+    <input
+      [id]="id"
+      [value]="data || ''"
+      [disabled]="!enabled"
+      (input)="onChange($event)"
+    />
+  `
+})
+export class CustomStringRenderer extends JsonFormsControl {
+  onChange(event: Event) {
+    const value = (event.target as HTMLInputElement).value;
+    this.handleChange(this.path, value);
+  }
+}
+
+// Register the renderer
+export const customStringRendererTester = rankWith(5, isStringControl);
+
+export const customRenderers = [
+  { tester: customStringRendererTester, renderer: CustomStringRenderer }
+];
+```
+
+### Base Renderer Classes
+
+<Tabs>
+  <Tab title="JsonFormsControl">
+    Extends `JsonFormsBaseRenderer` with control-specific functionality:
+    
+    ```typescript
+    export class JsonFormsControl extends JsonFormsAbstractControl {
+      @Input() id: string;
+      @Input() disabled: boolean;
+      
+      // Inherited properties
+      data: any;
+      enabled: boolean;
+      path: string;
+      errors: string;
+      
+      // Methods
+      handleChange(path: string, value: any): void;
+    }
+    ```
+  </Tab>
+  
+  <Tab title="JsonFormsBaseRenderer">
+    Base class for all renderers:
+    
+    ```typescript
+    export class JsonFormsBaseRenderer<T extends UISchemaElement> {
+      @Input() uischema: T;
+      @Input() schema: JsonSchema;
+      @Input() path: string;
+      
+      // Lifecycle management
+      protected addSubscription(subscription: Subscription): void;
+      ngOnDestroy(): void;
+    }
+    ```
+  </Tab>
+  
+  <Tab title="JsonFormsArrayControl">
+    For array-based controls:
+    
+    ```typescript
+    export class JsonFormsArrayControl extends JsonFormsBaseRenderer {
+      addItem(path: string, value: any): void;
+      removeItem(path: string, index: number): void;
+      moveItemUp(path: string, index: number): void;
+      moveItemDown(path: string, index: number): void;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Advanced Features
+
+### Middleware
+
+Intercept and transform actions:
+
+```typescript
+import type { Middleware } from '@jsonforms/core';
+
+const validationMiddleware: Middleware = (state, action, reducer) => {
+  const newState = reducer(state, action);
+  
+  // Custom validation logic
+  if (action.type === 'UPDATE_DATA') {
+    // Perform additional validation
+  }
+  
+  return newState;
+};
+
+this.jsonformsService.init(initialState, validationMiddleware);
+```
+
+### Custom AJV Instance
+
+```typescript
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+
+const ajv = new Ajv({ allErrors: true, verbose: true });
+addFormats(ajv);
+
+// Add custom keywords
+ajv.addKeyword({
+  keyword: 'isEven',
+  validate: (schema: any, data: any) => data % 2 === 0
+});
+
+// Use in component
+<jsonforms [ajv]="ajv" ... ></jsonforms>
+```
+
+### Dynamic Schema Updates
+
+```typescript
+import { Component } from '@angular/core';
+
+@Component({
+  template: `
+    <button (click)="addField()">Add Field</button>
+    <jsonforms [schema]="schema" [data]="data" ...></jsonforms>
+  `
+})
+export class DynamicFormComponent {
+  schema = {
+    type: 'object',
+    properties: {}
+  };
+  
+  data = {};
+  
+  addField() {
+    const fieldName = `field${Object.keys(this.schema.properties).length + 1}`;
+    this.schema = {
+      ...this.schema,
+      properties: {
+        ...this.schema.properties,
+        [fieldName]: { type: 'string' }
+      }
+    };
+  }
+}
+```
+
+## TypeScript Support
+
+JSON Forms Angular exports comprehensive TypeScript types:
+
+```typescript
+import type {
+  JsonFormsControl,
+  JsonFormsBaseRenderer,
+  JsonFormsArrayControl,
+  JsonFormsAngularService
+} from '@jsonforms/angular';
+
+import type {
+  JsonSchema,
+  UISchemaElement,
+  ValidationMode,
+  JsonFormsRendererRegistryEntry
+} from '@jsonforms/core';
+```
+
+## Change Detection
+
+The `JsonForms` component uses Angular's `OnChanges` lifecycle hook to detect input changes and automatically updates the internal state. The service uses `BehaviorSubject` for reactive state management.
+
+<Note>
+The component performs deep equality checks on i18n configuration to detect nested changes. For optimal performance, avoid creating new object instances unnecessarily.
+</Note>
+
+## Next Steps
+
+- Learn about [Angular Material renderers](/renderers/angular-material)
+- Create [custom Angular renderers](/advanced/custom-renderers)
+- Configure [validation](/advanced/validation)
+- Setup [internationalization](/advanced/i18n)

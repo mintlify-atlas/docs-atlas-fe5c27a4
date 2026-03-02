@@ -1,0 +1,345 @@
+---
+title: Reducers API
+description: Redux-compatible reducers for JSON Forms state management
+---
+
+Reducers handle state updates in response to dispatched actions. JSON Forms provides Redux-compatible reducers that can be integrated into any Redux-based application.
+
+## Main Reducer Configuration
+
+### jsonFormsReducerConfig
+
+Complete reducer configuration for JSON Forms state.
+
+```typescript
+export const jsonFormsReducerConfig = {
+  core: coreReducer,
+  renderers: rendererReducer,
+  cells: cellReducer,
+  config: configReducer,
+  uischemas: uischemaRegistryReducer,
+  defaultData: defaultDataReducer,
+  i18n: i18nReducer,
+};
+```
+
+**Usage with Redux:**
+
+```typescript
+import { combineReducers, createStore } from 'redux';
+import { jsonFormsReducerConfig } from '@jsonforms/core';
+
+const store = createStore(
+  combineReducers({ jsonforms: combineReducers(jsonFormsReducerConfig) })
+);
+```
+
+**Usage with Redux Toolkit:**
+
+```typescript
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import { jsonFormsReducerConfig } from '@jsonforms/core';
+
+const store = configureStore({
+  reducer: {
+    jsonforms: combineReducers(jsonFormsReducerConfig),
+  },
+});
+```
+
+## Core Reducer
+
+### coreReducer
+
+Handles core JSON Forms state including data, schema, validation, and errors.
+
+```typescript
+function coreReducer(
+  state: JsonFormsCore = initState,
+  action: CoreActions
+): JsonFormsCore
+```
+
+<ParamField path="state" type="JsonFormsCore">
+  Current core state. Defaults to `initState`.
+</ParamField>
+
+<ParamField path="action" type="CoreActions">
+  One of: `InitAction`, `UpdateCoreAction`, `UpdateAction`, `UpdateErrorsAction`, `SetAjvAction`, `SetSchemaAction`, `SetUISchemaAction`, `SetValidationModeAction`
+</ParamField>
+
+<ResponseField name="return" type="JsonFormsCore">
+  Updated core state
+</ResponseField>
+
+**State Shape:**
+
+```typescript
+interface JsonFormsCore {
+  data: any;
+  schema: JsonSchema;
+  uischema: UISchemaElement | undefined;
+  errors: ErrorObject[];
+  validator: ValidateFunction | undefined;
+  ajv: Ajv | undefined;
+  validationMode: ValidationMode;
+  additionalErrors: ErrorObject[];
+}
+```
+
+**Initial State:**
+
+```typescript
+export const initState: JsonFormsCore = {
+  data: {},
+  schema: {},
+  uischema: undefined,
+  errors: [],
+  validator: undefined,
+  ajv: undefined,
+  validationMode: 'ValidateAndShow',
+  additionalErrors: [],
+};
+```
+
+**Handled Actions:**
+
+- `INIT` - Initialize form with data, schema, and UI schema
+- `UPDATE_CORE` - Update multiple core properties at once
+- `UPDATE_DATA` - Update data at a specific path
+- `UPDATE_ERRORS` - Update validation errors
+- `SET_SCHEMA` - Set the JSON schema
+- `SET_UISCHEMA` - Set the UI schema
+- `SET_AJV` - Set custom AJV instance
+- `SET_VALIDATION_MODE` - Change validation mode
+
+**Example:**
+
+```typescript
+import { coreReducer, init, update } from '@jsonforms/core';
+
+let state = coreReducer(undefined, init(
+  { name: 'John' },
+  { type: 'object', properties: { name: { type: 'string' } } }
+));
+
+state = coreReducer(state, update('name', () => 'Jane'));
+// state.data.name === 'Jane'
+```
+
+## Helper Functions
+
+### getOrCreateAjv
+
+Get existing AJV instance or create a new one.
+
+```typescript
+function getOrCreateAjv(
+  state: JsonFormsCore,
+  action?: InitAction | UpdateCoreAction
+): Ajv
+```
+
+<ParamField path="state" type="JsonFormsCore" required>
+  Current core state
+</ParamField>
+
+<ParamField path="action" type="InitAction | UpdateCoreAction">
+  Action that may contain AJV options
+</ParamField>
+
+<ResponseField name="return" type="Ajv">
+  AJV instance for validation
+</ResponseField>
+
+### getValidationMode
+
+Extract validation mode from state or action.
+
+```typescript
+function getValidationMode(
+  state: JsonFormsCore,
+  action?: InitAction | UpdateCoreAction
+): ValidationMode
+```
+
+<ParamField path="state" type="JsonFormsCore" required>
+  Current core state
+</ParamField>
+
+<ParamField path="action" type="InitAction | UpdateCoreAction">
+  Action that may contain validation mode option
+</ParamField>
+
+<ResponseField name="return" type="ValidationMode">
+  One of: 'ValidateAndShow', 'ValidateAndHide', 'NoValidation'
+</ResponseField>
+
+### getAdditionalErrors
+
+Extract additional errors from state or action.
+
+```typescript
+function getAdditionalErrors(
+  state: JsonFormsCore,
+  action?: InitAction | UpdateCoreAction
+): ErrorObject[]
+```
+
+<ParamField path="state" type="JsonFormsCore" required>
+  Current core state
+</ParamField>
+
+<ParamField path="action" type="InitAction | UpdateCoreAction">
+  Action that may contain additional errors
+</ParamField>
+
+<ResponseField name="return" type="ErrorObject[]">
+  Array of additional validation errors
+</ResponseField>
+
+## UI Schema Resolution
+
+### findUISchema
+
+Find a registered UI schema or generate a default one.
+
+```typescript
+function findUISchema(
+  uischemas: JsonFormsUISchemaRegistryEntry[],
+  schema: JsonSchema,
+  schemaPath: string,
+  path: string,
+  fallback: string | (() => UISchemaElement) = 'VerticalLayout',
+  control?: ControlElement,
+  rootSchema?: JsonSchema
+): UISchemaElement
+```
+
+<ParamField path="uischemas" type="JsonFormsUISchemaRegistryEntry[]" required>
+  Array of registered UI schemas
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema" required>
+  JSON schema to find UI schema for
+</ParamField>
+
+<ParamField path="schemaPath" type="string" required>
+  Schema path (JSON Pointer)
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  Data path
+</ParamField>
+
+<ParamField path="fallback" type="string | (() => UISchemaElement)">
+  Layout type or generator function (default: 'VerticalLayout')
+</ParamField>
+
+<ParamField path="control" type="ControlElement">
+  Control element that may have inline UI schema options
+</ParamField>
+
+<ParamField path="rootSchema" type="JsonSchema">
+  Root schema for resolution
+</ParamField>
+
+<ResponseField name="return" type="UISchemaElement">
+  Resolved or generated UI schema
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { findUISchema } from '@jsonforms/core';
+
+const uischema = findUISchema(
+  registeredUISchemas,
+  schema,
+  '#/properties/address',
+  'address',
+  'VerticalLayout'
+);
+```
+
+## Validation Modes
+
+JSON Forms supports three validation modes:
+
+### ValidateAndShow
+
+Validate data and display all validation errors immediately. This is the default mode.
+
+```typescript
+import { init } from '@jsonforms/core';
+
+const action = init(data, schema, uischema, {
+  validationMode: 'ValidateAndShow'
+});
+```
+
+### ValidateAndHide
+
+Validate data but don't display errors until the user interacts with the field.
+
+```typescript
+const action = init(data, schema, uischema, {
+  validationMode: 'ValidateAndHide'
+});
+```
+
+### NoValidation
+
+Disable all validation. No validator is created.
+
+```typescript
+const action = init(data, schema, uischema, {
+  validationMode: 'NoValidation'
+});
+```
+
+## State Updates
+
+The core reducer handles data updates efficiently:
+
+### Path-based Updates
+
+When updating via `UPDATE_DATA` action, the reducer:
+
+1. Retrieves current value at the path
+2. Passes it to the updater function
+3. Updates the state immutably
+4. Re-runs validation
+
+```typescript
+import { update } from '@jsonforms/core';
+
+// Update nested property
+const action = update('person.address.city', () => 'New York');
+
+// Update array
+const arrayAction = update('items', (items) => {
+  const newItems = [...items];
+  newItems[0] = updatedItem;
+  return newItems;
+});
+```
+
+### Schema Updates
+
+When the schema changes via `SET_SCHEMA`:
+
+1. A new validator is compiled if validation is enabled
+2. Current data is re-validated against the new schema
+3. Errors are updated
+
+```typescript
+import { setSchema } from '@jsonforms/core';
+
+const action = setSchema({
+  type: 'object',
+  properties: {
+    name: { type: 'string', minLength: 3 }
+  }
+});
+```

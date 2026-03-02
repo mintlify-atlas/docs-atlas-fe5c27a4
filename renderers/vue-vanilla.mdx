@@ -1,0 +1,312 @@
+---
+title: Vue Vanilla Renderers
+description: Lightweight vanilla renderer set for Vue 3 applications using plain HTML and CSS
+---
+
+The Vue Vanilla renderer set provides a lightweight, unstyled set of renderers for Vue 3 applications. These renderers use plain HTML5 input elements and can be styled with CSS, making them ideal for custom designs, Tailwind CSS integration, or lightweight applications.
+
+## Installation
+
+```bash
+npm install @jsonforms/vue-vanilla
+```
+
+### Peer Dependencies
+
+The Vue Vanilla renderer set requires the following peer dependencies:
+
+```bash
+npm install @jsonforms/core @jsonforms/vue vue@3
+```
+
+## Usage
+
+Import and register the Vue Vanilla renderers with JSON Forms:
+
+```vue
+<template>
+  <json-forms
+    :data="data"
+    :schema="schema"
+    :uischema="uischema"
+    :renderers="renderers"
+    @change="onChange"
+  />
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { JsonForms } from '@jsonforms/vue';
+import { vanillaRenderers } from '@jsonforms/vue-vanilla';
+
+const renderers = vanillaRenderers;
+const data = ref({});
+const schema = { /* your schema */ };
+const uischema = { /* your uischema */ };
+
+const onChange = (event) => {
+  data.value = event.data;
+};
+</script>
+```
+
+## Available Renderers
+
+### Control Renderers
+
+Control renderers handle individual form inputs:
+
+- **StringControlRenderer** - Text input for strings
+- **MultiStringControlRenderer** - Textarea for multi-line strings
+- **NumberControlRenderer** - Number input for decimals
+- **IntegerControlRenderer** - Number input for integers
+- **EnumControlRenderer** - Select dropdown for enum values
+- **oneOfEnumControlRenderer** - Select for oneOf with enum
+- **DateControlRenderer** - Date input using HTML5 date picker
+- **DateTimeControlRenderer** - DateTime input using HTML5 datetime-local picker
+- **TimeControlRenderer** - Time input using HTML5 time picker
+- **BooleanControlRenderer** - Checkbox for boolean values
+
+### Layout Renderers
+
+Layout renderers organize form structure:
+
+- **LayoutRenderer** - Generic layout renderer for horizontal and vertical layouts
+- **GroupRenderer** - Groups elements with optional label
+- **CategorizationRenderer** - Tab-based categorization
+- **CategorizationStepperRenderer** - Stepper-based categorization
+
+### Complex Renderers
+
+Complex renderers handle advanced features:
+
+- **ObjectRenderer** - Nested object structures
+- **OneOfRenderer** - OneOf schema selection
+- **EnumArrayRenderer** - Array of enum values with checkboxes
+
+### Additional Components
+
+- **ControlWrapper** - Wrapper component for controls that handles labels and validation messages
+
+## Styling
+
+The Vue Vanilla renderers provide a basic CSS file that you can import:
+
+```javascript
+import '@jsonforms/vue-vanilla/vanilla.css';
+```
+
+### Custom Styling
+
+You can override the default styles with your own CSS:
+
+```css
+/* Custom control styling */
+.control {
+  margin-bottom: 1rem;
+}
+
+.control label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+.control input,
+.control select,
+.control textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+}
+
+.control input:focus,
+.control select:focus,
+.control textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Validation errors */
+.validation-error {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Layout styling */
+.vertical-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.horizontal-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.group {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  background-color: #f9fafb;
+}
+```
+
+## Tailwind CSS Integration
+
+The Vue Vanilla renderers work excellently with Tailwind CSS:
+
+```vue
+<template>
+  <div class="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
+    <json-forms
+      :data="data"
+      :schema="schema"
+      :uischema="uischema"
+      :renderers="renderers"
+      @change="onChange"
+    />
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { JsonForms } from '@jsonforms/vue';
+import { vanillaRenderers } from '@jsonforms/vue-vanilla';
+import '@jsonforms/vue-vanilla/vanilla.css';
+
+const renderers = vanillaRenderers;
+const data = ref({});
+</script>
+
+<style>
+/* Tailwind-enhanced styles */
+.control input,
+.control select,
+.control textarea {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.control label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.validation-error {
+  @apply text-red-500 text-sm mt-1;
+}
+</style>
+```
+
+## Component Structure
+
+Each renderer is a Vue 3 component that exports both the component and an entry object:
+
+```javascript
+// Example from StringControlRenderer.vue
+export const entry = {
+  renderer: StringControlRenderer,
+  tester: rankWith(1, isStringControl)
+};
+```
+
+## Advantages
+
+The Vue Vanilla renderer set offers several advantages:
+
+- **Lightweight** - Minimal dependencies, smaller bundle size
+- **Vue 3 Native** - Built specifically for Vue 3 with Composition API
+- **Flexible Styling** - Complete control over appearance with CSS
+- **Framework Agnostic Styling** - Works with any CSS framework (Tailwind, Bootstrap, etc.)
+- **Accessible** - Uses semantic HTML5 elements
+- **Simple** - Straightforward structure, easy to understand and customize
+
+## Customization
+
+You can customize Vue Vanilla renderers by:
+
+1. **CSS Styling** - Apply custom CSS to override default styles
+2. **Custom Renderers** - Create custom Vue components that extend the Vanilla renderers
+3. **Custom Testers** - Override default testers to change when renderers are applied
+
+### Example: Custom Renderer
+
+```vue
+<template>
+  <control-wrapper
+    v-bind="controlWrapper"
+    :styles="styles"
+    :isFocused="isFocused"
+  >
+    <input
+      :id="control.id + '-input'"
+      :value="control.data"
+      :disabled="!control.enabled"
+      @input="onChange"
+      @focus="isFocused = true"
+      @blur="isFocused = false"
+      class="custom-input"
+      placeholder="Enter text..."
+    />
+  </control-wrapper>
+</template>
+
+<script>
+import { defineComponent } from 'vue';
+import { rendererProps, useJsonFormsControl } from '@jsonforms/vue';
+import { ControlWrapper } from '@jsonforms/vue-vanilla';
+import { rankWith, isStringControl } from '@jsonforms/core';
+
+const controlRenderer = defineComponent({
+  name: 'CustomStringRenderer',
+  components: { ControlWrapper },
+  props: {
+    ...rendererProps()
+  },
+  setup(props) {
+    return useJsonFormsControl(props);
+  },
+  data() {
+    return {
+      isFocused: false
+    };
+  },
+  methods: {
+    onChange(event) {
+      this.handleChange(this.control.path, event.target.value);
+    }
+  }
+});
+
+export default controlRenderer;
+
+export const entry = {
+  renderer: controlRenderer,
+  tester: rankWith(5, isStringControl) // Higher rank than default
+};
+</script>
+
+<style scoped>
+.custom-input {
+  /* Your custom styles */
+}
+</style>
+```
+
+## TypeScript Support
+
+The Vue Vanilla renderer set is written in TypeScript and includes full type definitions.
+
+## Learn More
+
+- [Custom Renderers](/advanced/custom-renderers)
+- [Styling](/renderers/vanilla)
+- [Testers](/api/core/testers)
+- [Vue 3 Documentation](https://vuejs.org/)

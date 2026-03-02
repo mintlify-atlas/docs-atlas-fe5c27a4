@@ -1,0 +1,453 @@
+---
+title: JSON Schema
+description: Learn how JSON Forms uses JSON Schema to define data structures, types, and validation rules
+---
+
+JSON Schema is the foundation of JSON Forms. It defines the structure of your data, the types of fields, and validation rules. JSON Forms supports both JSON Schema Draft 4 and Draft 7.
+
+## What is JSON Schema?
+
+JSON Schema is a vocabulary that allows you to annotate and validate JSON documents. In JSON Forms, it serves as the single source of truth for:
+
+- Data structure and types
+- Validation rules
+- Default values
+- Metadata (titles, descriptions)
+
+## Type System
+
+JSON Schema supports these primitive types:
+
+```typescript
+type?: string | string[];
+```
+
+### String
+
+```json
+{
+  "type": "string",
+  "minLength": 3,
+  "maxLength": 50,
+  "pattern": "^[A-Za-z]+$",
+  "description": "Please enter your name"
+}
+```
+
+**Validation properties:**
+- `minLength`, `maxLength` - Length constraints
+- `pattern` - Regular expression
+- `format` - Predefined formats (email, uri, date, time, etc.)
+
+### Number and Integer
+
+```json
+{
+  "type": "integer",
+  "minimum": 1,
+  "maximum": 100,
+  "multipleOf": 5,
+  "default": 50
+}
+```
+
+**Validation properties:**
+- `minimum`, `maximum` - Value bounds
+- `exclusiveMinimum`, `exclusiveMaximum` - Exclusive bounds
+- `multipleOf` - Value must be a multiple of this number
+
+### Boolean
+
+```json
+{
+  "type": "boolean",
+  "default": false
+}
+```
+
+### Object
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "age": { "type": "integer" }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}
+```
+
+**Validation properties:**
+- `properties` - Property definitions
+- `required` - Required property names
+- `additionalProperties` - Allow/disallow extra properties
+- `minProperties`, `maxProperties` - Number of properties
+
+### Array
+
+```json
+{
+  "type": "array",
+  "items": {
+    "type": "string"
+  },
+  "minItems": 1,
+  "maxItems": 10,
+  "uniqueItems": true
+}
+```
+
+**Validation properties:**
+- `items` - Schema for array elements
+- `minItems`, `maxItems` - Array length
+- `uniqueItems` - Ensure all items are unique
+
+## Enumerations
+
+### Simple Enum
+
+```json
+{
+  "type": "string",
+  "enum": ["red", "green", "blue"]
+}
+```
+
+### OneOf Enum (with labels)
+
+```json
+{
+  "type": "string",
+  "oneOf": [
+    { "const": "de", "title": "Germany" },
+    { "const": "us", "title": "United States" },
+    { "const": "jp", "title": "Japan" }
+  ]
+}
+```
+
+<Note>
+`oneOf` enums allow you to provide human-readable labels for enum values using the `title` property.
+</Note>
+
+## String Formats
+
+JSON Schema defines standard formats for strings:
+
+```json
+{
+  "type": "string",
+  "format": "email"
+}
+```
+
+**Common formats:**
+- `date` - Full date (e.g., 2024-03-15)
+- `time` - Time (e.g., 14:30:00)
+- `date-time` - Date and time (ISO 8601)
+- `email` - Email address
+- `uri` - URI/URL
+- `ipv4`, `ipv6` - IP addresses
+
+## Combining Schemas
+
+JSON Schema provides powerful composition keywords:
+
+### allOf
+
+All schemas must match:
+
+```json
+{
+  "allOf": [
+    { "type": "object", "properties": { "name": { "type": "string" } } },
+    { "type": "object", "properties": { "age": { "type": "integer" } } }
+  ]
+}
+```
+
+### anyOf
+
+At least one schema must match:
+
+```json
+{
+  "anyOf": [
+    { "type": "string" },
+    { "type": "number" }
+  ]
+}
+```
+
+### oneOf
+
+Exactly one schema must match:
+
+```json
+{
+  "oneOf": [
+    { "type": "object", "properties": { "credit_card": { "type": "string" } } },
+    { "type": "object", "properties": { "paypal": { "type": "string" } } }
+  ]
+}
+```
+
+## References
+
+Use `$ref` to reuse schema definitions:
+
+```json
+{
+  "definitions": {
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": { "type": "string" },
+        "city": { "type": "string" }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "billingAddress": { "$ref": "#/definitions/address" },
+    "shippingAddress": { "$ref": "#/definitions/address" }
+  }
+}
+```
+
+## Complete Example
+
+Here's a real-world example from the JSON Forms codebase:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "description": "Please enter your name"
+    },
+    "vegetarian": {
+      "type": "boolean"
+    },
+    "birthDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Please enter your birth date."
+    },
+    "nationality": {
+      "type": "string",
+      "enum": ["DE", "IT", "JP", "US", "RU", "Other"]
+    },
+    "personalData": {
+      "type": "object",
+      "properties": {
+        "age": {
+          "type": "integer",
+          "description": "Please enter your age."
+        },
+        "height": {
+          "type": "number"
+        },
+        "drivingSkill": {
+          "type": "number",
+          "maximum": 10,
+          "minimum": 1,
+          "default": 7
+        }
+      },
+      "required": ["age", "height"]
+    }
+  },
+  "required": ["name", "nationality"]
+}
+```
+
+## JSON Schema in TypeScript
+
+JSON Forms provides TypeScript types for JSON Schema:
+
+```typescript
+import { JsonSchema7 } from '@jsonforms/core';
+
+const schema: JsonSchema7 = {
+  type: 'object',
+  properties: {
+    name: {
+      type: 'string',
+      minLength: 3
+    }
+  }
+};
+```
+
+<Tabs>
+  <Tab title="JSON Schema 7">
+    ```typescript
+    export interface JsonSchema7 {
+      $ref?: string;
+      $id?: string;
+      $schema?: string;
+      title?: string;
+      description?: string;
+      default?: any;
+      
+      // Type
+      type?: string | string[];
+      
+      // String validation
+      maxLength?: number;
+      minLength?: number;
+      pattern?: string;
+      
+      // Number validation
+      multipleOf?: number;
+      maximum?: number;
+      exclusiveMaximum?: number;
+      minimum?: number;
+      exclusiveMinimum?: number;
+      
+      // Object validation
+      properties?: { [property: string]: JsonSchema7 };
+      required?: string[];
+      additionalProperties?: boolean | JsonSchema7;
+      
+      // Array validation
+      items?: JsonSchema7 | JsonSchema7[];
+      minItems?: number;
+      maxItems?: number;
+      uniqueItems?: boolean;
+      
+      // Enum
+      enum?: any[];
+      const?: any;
+      
+      // Combining schemas
+      allOf?: JsonSchema7[];
+      anyOf?: JsonSchema7[];
+      oneOf?: JsonSchema7[];
+      not?: JsonSchema7;
+      
+      // Format
+      format?: string;
+    }
+    ```
+  </Tab>
+  <Tab title="JSON Schema 4">
+    JSON Forms also supports JSON Schema Draft 4 through the `JsonSchema4` type.
+  </Tab>
+</Tabs>
+
+## Schema Resolution
+
+JSON Forms resolves schemas internally when processing scopes:
+
+```typescript
+// From packages/core/src/testers/testers.ts:124
+let currentDataSchema = schema;
+if (hasType(schema, 'object')) {
+  currentDataSchema = resolveSchema(
+    schema,
+    schemaPath,
+    context?.rootSchema
+  );
+}
+```
+
+This allows JSON Forms to:
+- Follow `$ref` pointers
+- Navigate through nested schemas
+- Resolve `allOf`, `anyOf`, `oneOf` combinations
+
+<Info>
+The root schema is always available in the tester context to resolve references.
+</Info>
+
+## Validation
+
+JSON Forms uses [AJV (Another JSON Validator)](https://ajv.js.org/) to validate data against the schema:
+
+```typescript
+// Compiled validator
+const validator = ajv.compile(schema);
+
+// Validate data
+const errors = validate(validator, data);
+```
+
+Validation happens automatically:
+- When data changes
+- When the schema changes
+- On user input (depending on validation mode)
+
+See the [Data Binding](/concepts/data-binding) section for more details on validation.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive titles and descriptions">
+    ```json
+    {
+      "type": "string",
+      "title": "Full Name",
+      "description": "Enter your legal first and last name"
+    }
+    ```
+    
+    Titles and descriptions help users understand what each field is for.
+  </Accordion>
+  
+  <Accordion title="Set appropriate defaults">
+    ```json
+    {
+      "type": "integer",
+      "default": 18,
+      "minimum": 0,
+      "maximum": 150
+    }
+    ```
+    
+    Defaults improve user experience by pre-filling common values.
+  </Accordion>
+  
+  <Accordion title="Use format for common data types">
+    ```json
+    {
+      "type": "string",
+      "format": "email"
+    }
+    ```
+    
+    Formats provide built-in validation and enable specialized renderers.
+  </Accordion>
+  
+  <Accordion title="Keep schemas DRY with $ref">
+    ```json
+    {
+      "definitions": {
+        "contact": { "type": "string", "format": "email" }
+      },
+      "properties": {
+        "email": { "$ref": "#/definitions/contact" },
+        "backupEmail": { "$ref": "#/definitions/contact" }
+      }
+    }
+    ```
+    
+    Reuse schema definitions to avoid duplication.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="UI Schema" icon="palette" href="/concepts/ui-schema">
+    Learn how to control the layout and presentation of your forms
+  </Card>
+  <Card title="Renderers" icon="code" href="/concepts/renderers">
+    Understand how JSON Forms selects renderers based on schema
+  </Card>
+</CardGroup>

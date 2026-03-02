@@ -1,0 +1,252 @@
+---
+title: React Components
+description: Core React components for rendering JSON Forms
+---
+
+## JsonForms
+
+The main component for rendering a complete JSON Forms instance.
+
+### Props
+
+<ParamField path="data" type="any" required>
+  The data to be rendered and edited by the form
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema">
+  The JSON Schema that describes the data structure. If not provided, a schema will be automatically generated from the data
+</ParamField>
+
+<ParamField path="uischema" type="UISchemaElement">
+  The UI Schema that describes how the form should be rendered. If not provided, a UI schema will be automatically generated
+</ParamField>
+
+<ParamField path="renderers" type="JsonFormsRendererRegistryEntry[]" required>
+  Array of renderer registry entries that define how to render different UI schema elements
+</ParamField>
+
+<ParamField path="cells" type="JsonFormsCellRendererRegistryEntry[]">
+  Array of cell renderer registry entries for rendering table cells
+</ParamField>
+
+<ParamField path="onChange" type="(state: { data: any, errors: ErrorObject[] }) => void">
+  Callback function invoked when the form data changes. Receives the updated data and validation errors
+</ParamField>
+
+<ParamField path="ajv" type="Ajv">
+  Custom Ajv instance for validation. If not provided, a default instance will be created
+</ParamField>
+
+<ParamField path="config" type="any">
+  Configuration object passed to renderers for customization
+</ParamField>
+
+<ParamField path="uischemas" type="JsonFormsUISchemaRegistryEntry[]">
+  Array of UI schema registry entries for dynamic UI schema resolution
+</ParamField>
+
+<ParamField path="readonly" type="boolean">
+  Whether the form should be rendered in read-only mode
+</ParamField>
+
+<ParamField path="validationMode" type="ValidationMode">
+  Validation mode: `ValidateAndShow`, `ValidateAndHide`, or `NoValidation`
+</ParamField>
+
+<ParamField path="i18n" type="JsonFormsI18nState">
+  Internationalization state including locale and translation functions
+</ParamField>
+
+<ParamField path="additionalErrors" type="ErrorObject[]">
+  Additional validation errors to display alongside schema validation errors
+</ParamField>
+
+<ParamField path="middleware" type="Middleware">
+  Middleware function for intercepting and transforming core actions
+</ParamField>
+
+### Example
+
+```tsx
+import { JsonForms } from '@jsonforms/react';
+import { materialRenderers } from '@jsonforms/material-renderers';
+
+function MyForm() {
+  const [data, setData] = useState({});
+  
+  const schema = {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      age: { type: 'number' }
+    }
+  };
+
+  return (
+    <JsonForms
+      data={data}
+      schema={schema}
+      renderers={materialRenderers}
+      onChange={({ data, errors }) => setData(data)}
+    />
+  );
+}
+```
+
+## JsonFormsDispatch
+
+Internal dispatch component that selects and renders the appropriate renderer for a UI schema element. Used internally by JsonForms and when building custom renderers.
+
+### Props
+
+<ParamField path="uischema" type="UISchemaElement" required>
+  The UI schema element to render
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema" required>
+  The JSON Schema for the current element
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  The data path to the current element
+</ParamField>
+
+<ParamField path="enabled" type="boolean">
+  Whether the element is enabled for editing
+</ParamField>
+
+<ParamField path="renderers" type="JsonFormsRendererRegistryEntry[]">
+  Available renderers (automatically provided when using within JsonForms context)
+</ParamField>
+
+<ParamField path="cells" type="JsonFormsCellRendererRegistryEntry[]">
+  Available cell renderers (automatically provided when using within JsonForms context)
+</ParamField>
+
+### Example
+
+```tsx
+import { JsonFormsDispatch } from '@jsonforms/react';
+
+function CustomLayoutRenderer({ uischema, schema, path }: LayoutProps) {
+  return (
+    <div className="custom-layout">
+      {uischema.elements.map((child, index) => (
+        <JsonFormsDispatch
+          key={index}
+          uischema={child}
+          schema={schema}
+          path={path}
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+## DispatchCell
+
+Dispatch component for rendering table cells. Selects the appropriate cell renderer based on the schema and UI schema.
+
+### Props
+
+<ParamField path="uischema" type="UISchemaElement" required>
+  The UI schema element for the cell
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema" required>
+  The JSON Schema for the cell data
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  The data path to the cell value
+</ParamField>
+
+<ParamField path="enabled" type="boolean">
+  Whether the cell is enabled for editing
+</ParamField>
+
+<ParamField path="cells" type="JsonFormsCellRendererRegistryEntry[]">
+  Available cell renderers
+</ParamField>
+
+## UnknownRenderer
+
+Fallback component displayed when no suitable renderer is found for a UI schema element.
+
+### Props
+
+<ParamField path="type" type="'renderer' | 'cell'" required>
+  The type of renderer that could not be found
+</ParamField>
+
+## JsonFormsStateProvider
+
+Context provider component that manages JSON Forms state. Typically used internally by the `JsonForms` component, but can be used directly for advanced use cases.
+
+### Props
+
+<ParamField path="initState" type="JsonFormsInitState" required>
+  Initial state object containing core, renderers, cells, config, and other settings
+</ParamField>
+
+<ParamField path="onChange" type="(state: { data: any, errors: ErrorObject[] }) => void">
+  Callback function invoked when state changes
+</ParamField>
+
+<ParamField path="middleware" type="Middleware">
+  Middleware function for intercepting core actions
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  Child components that will have access to the JSON Forms context
+</ParamField>
+
+## Higher-Order Components
+
+The React package provides numerous HOCs for connecting components to JSON Forms state:
+
+- `withJsonFormsControlProps` - For control renderers
+- `withJsonFormsLayoutProps` - For layout renderers  
+- `withJsonFormsArrayLayoutProps` - For array layout renderers
+- `withJsonFormsArrayControlProps` - For array control renderers
+- `withJsonFormsCellProps` - For cell renderers
+- `withJsonFormsEnumProps` - For enum control renderers
+- `withJsonFormsOneOfProps` - For oneOf combinator renderers
+- `withJsonFormsAnyOfProps` - For anyOf combinator renderers
+- `withJsonFormsAllOfProps` - for allOf combinator renderers
+
+Each HOC accepts a component and an optional memoization flag, returning a wrapped component with injected props from the JSON Forms context.
+
+## Base Classes
+
+### RendererComponent
+
+Base class for creating class-based renderers.
+
+```tsx
+class MyRenderer extends RendererComponent<ControlProps> {
+  render() {
+    return <div>{/* renderer implementation */}</div>;
+  }
+}
+```
+
+### Control
+
+Base class for creating control renderers with built-in state management for value and focus.
+
+```tsx
+class MyControl extends Control<ControlProps, ControlState> {
+  render() {
+    return (
+      <input
+        value={this.state.value}
+        onChange={(e) => this.handleChange(e.target.value)}
+        onFocus={this.onFocus}
+        onBlur={this.onBlur}
+      />
+    );
+  }
+}
+```

@@ -1,0 +1,545 @@
+---
+title: Renderer Types
+description: TypeScript type definitions for renderer registration and props in JSON Forms
+---
+
+Renderers are React components that display form controls and layouts. JSON Forms uses a tester-based system to automatically select the appropriate renderer for each UI schema element.
+
+## Renderer registration
+
+### JsonFormsRendererRegistryEntry
+
+Registry entry that pairs a tester with a renderer component.
+
+<ResponseField name="tester" type="RankedTester" required>
+  Function that returns a numeric rank indicating how well the renderer matches a UI schema element. Higher ranks take precedence.
+</ResponseField>
+
+<ResponseField name="renderer" type="any" required>
+  The renderer component (React, Angular, or Vue component).
+</ResponseField>
+
+### Example
+
+```typescript
+import { rankWith, isStringControl } from '@jsonforms/core';
+import { TextFieldRenderer } from './renderers';
+
+const rendererEntry: JsonFormsRendererRegistryEntry = {
+  tester: rankWith(3, isStringControl),
+  renderer: TextFieldRenderer
+};
+```
+
+---
+
+## Cell renderer registration
+
+### JsonFormsCellRendererRegistryEntry
+
+Registry entry for cell renderers used within table controls.
+
+<ResponseField name="tester" type="RankedTester" required>
+  Function that returns a rank for cell renderer selection.
+</ResponseField>
+
+<ResponseField name="cell" type="any" required>
+  The cell renderer component.
+</ResponseField>
+
+---
+
+## Tester functions
+
+### RankedTester
+
+Function type for ranked testers.
+
+<ResponseField name="uischema" type="UISchemaElement" required>
+  The UI schema element to test.
+</ResponseField>
+
+<ResponseField name="schema" type="JsonSchema" required>
+  The JSON schema.
+</ResponseField>
+
+<ResponseField name="context" type="TesterContext" required>
+  Additional context including root schema and config.
+</ResponseField>
+
+<ResponseField name="returns" type="number" required>
+  Numeric rank. Returns `-1` (NOT_APPLICABLE) if the renderer cannot handle the element.
+</ResponseField>
+
+### TesterContext
+
+<ResponseField name="rootSchema" type="JsonSchema" required>
+  The root JSON Schema of the form. Used to resolve `$ref` references.
+</ResponseField>
+
+<ResponseField name="config" type="any" required>
+  Form-wide configuration object.
+</ResponseField>
+
+### Common testers
+
+JSON Forms provides built-in testers:
+
+- `isStringControl` - Tests for string controls
+- `isBooleanControl` - Tests for boolean controls
+- `isIntegerControl` - Tests for integer controls
+- `isNumberControl` - Tests for number controls
+- `isDateControl` - Tests for date controls
+- `isTimeControl` - Tests for time controls
+- `isDateTimeControl` - Tests for datetime controls
+- `isEnumControl` - Tests for enum controls
+- `isOneOfEnumControl` - Tests for oneOf enum controls
+- `isObjectArrayControl` - Tests for object array controls
+- `isPrimitiveArrayControl` - Tests for primitive array controls
+
+### Tester utilities
+
+<ResponseField name="rankWith" type="(rank: number, tester: Tester) => RankedTester">
+  Creates a ranked tester with the specified rank.
+</ResponseField>
+
+<ResponseField name="and" type="(...testers: Tester[]) => Tester">
+  Combines testers with AND logic.
+</ResponseField>
+
+<ResponseField name="or" type="(...testers: Tester[]) => Tester">
+  Combines testers with OR logic.
+</ResponseField>
+
+<ResponseField name="not" type="(tester: Tester) => Tester">
+  Negates a tester.
+</ResponseField>
+
+---
+
+## Renderer props
+
+### OwnPropsOfRenderer
+
+Props passed directly to a renderer component.
+
+<ResponseField name="uischema" type="UISchemaElement">
+  The UI schema element to render.
+</ResponseField>
+
+<ResponseField name="schema" type="JsonSchema">
+  The JSON schema that describes the data.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean">
+  Whether the element should be enabled.
+</ResponseField>
+
+<ResponseField name="visible" type="boolean">
+  Whether the element should be visible.
+</ResponseField>
+
+<ResponseField name="path" type="string">
+  Instance path. Required when the data path cannot be inferred from the UI schema (e.g., nested controls).
+</ResponseField>
+
+<ResponseField name="renderers" type="JsonFormsRendererRegistryEntry[]">
+  Available renderers for child elements.
+</ResponseField>
+
+<ResponseField name="cells" type="JsonFormsCellRendererRegistryEntry[]">
+  Available cell renderers.
+</ResponseField>
+
+<ResponseField name="uischemas" type="JsonFormsUISchemaRegistryEntry[]">
+  Available UI schema registry entries.
+</ResponseField>
+
+---
+
+### StatePropsOfRenderer
+
+Props derived from the JSON Forms state.
+
+<ResponseField name="config" type="any">
+  Form configuration options.
+</ResponseField>
+
+<ResponseField name="uischema" type="UISchemaElement" required>
+  The UI schema element to render.
+</ResponseField>
+
+<ResponseField name="schema" type="JsonSchema" required>
+  The JSON schema.
+</ResponseField>
+
+<ResponseField name="data" type="any">
+  The data to render.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean" required>
+  Whether the element is enabled.
+</ResponseField>
+
+<ResponseField name="visible" type="boolean" required>
+  Whether the element is visible.
+</ResponseField>
+
+<ResponseField name="path" type="string" required>
+  Instance path where data is written.
+</ResponseField>
+
+<ResponseField name="renderers" type="JsonFormsRendererRegistryEntry[]">
+  Available renderers.
+</ResponseField>
+
+<ResponseField name="cells" type="JsonFormsCellRendererRegistryEntry[]">
+  Available cell renderers.
+</ResponseField>
+
+---
+
+## Control renderer props
+
+### OwnPropsOfControl
+
+Own props specific to control renderers.
+
+<ResponseField name="id" type="string">
+  Unique identifier for the control.
+</ResponseField>
+
+<ResponseField name="uischema" type="ControlElement">
+  The control element from UI schema.
+</ResponseField>
+
+Inherits all properties from `OwnPropsOfRenderer`.
+
+---
+
+### StatePropsOfControl
+
+State props for control renderers.
+
+<ResponseField name="data" type="any" required>
+  The current value of the control.
+</ResponseField>
+
+<ResponseField name="label" type="string" required>
+  Computed label text (includes internationalization and schema title).
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Control description from schema.
+</ResponseField>
+
+<ResponseField name="errors" type="string" required>
+  Combined error message string from validation.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Whether the field is required.
+</ResponseField>
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the control.
+</ResponseField>
+
+<ResponseField name="rootSchema" type="JsonSchema" required>
+  The root schema.
+</ResponseField>
+
+<ResponseField name="i18nKeyPrefix" type="string">
+  Base key for internationalization.
+</ResponseField>
+
+<ResponseField name="uischema" type="ControlElement" required>
+  The control element.
+</ResponseField>
+
+Inherits all properties from `StatePropsOfRenderer`.
+
+---
+
+### DispatchPropsOfControl
+
+Dispatch props for control renderers to update data.
+
+<ResponseField name="handleChange" type="(path: string, value: any) => void" required>
+  Function to update data at the specified path.
+</ResponseField>
+
+### Example usage
+
+```typescript
+import { ControlProps } from '@jsonforms/core';
+
+const MyControl = (props: ControlProps) => {
+  const { data, label, handleChange, path, errors, enabled } = props;
+  
+  return (
+    <div>
+      <label>{label}</label>
+      <input
+        value={data || ''}
+        onChange={(e) => handleChange(path, e.target.value)}
+        disabled={!enabled}
+      />
+      {errors && <div className="error">{errors}</div>}
+    </div>
+  );
+};
+```
+
+---
+
+## Layout renderer props
+
+### StatePropsOfLayout
+
+State props for layout renderers.
+
+<ResponseField name="direction" type="'row' | 'column'" required>
+  Layout direction (horizontal or vertical).
+</ResponseField>
+
+<ResponseField name="label" type="string">
+  Optional label for the layout (e.g., for groups).
+</ResponseField>
+
+Inherits all properties from `StatePropsOfRenderer`.
+
+---
+
+## Array control props
+
+### StatePropsOfArrayControl
+
+State props for array control renderers.
+
+<ResponseField name="arraySchema" type="JsonSchema" required>
+  The schema of the array itself.
+</ResponseField>
+
+<ResponseField name="schema" type="JsonSchema" required>
+  The schema of array items (resolved from `arraySchema.items`).
+</ResponseField>
+
+<ResponseField name="childErrors" type="ErrorObject[]">
+  Validation errors for array items.
+</ResponseField>
+
+Inherits all properties from `StatePropsOfControl`.
+
+---
+
+### DispatchPropsOfArrayControl
+
+Dispatch props for array control renderers.
+
+<ResponseField name="addItem" type="(path: string, value: any) => () => void" required>
+  Function that returns a handler to add an item to the array.
+</ResponseField>
+
+<ResponseField name="removeItems" type="(path: string, toDelete: number[]) => () => void">
+  Function that returns a handler to remove items from the array.
+</ResponseField>
+
+<ResponseField name="moveUp" type="(path: string, toMove: number) => () => void">
+  Function that returns a handler to move an item up.
+</ResponseField>
+
+<ResponseField name="moveDown" type="(path: string, toMove: number) => () => void">
+  Function that returns a handler to move an item down.
+</ResponseField>
+
+---
+
+## Combinator renderer props
+
+### CombinatorRendererProps
+
+Props for combinator renderers (oneOf, anyOf, allOf).
+
+<ResponseField name="schema" type="JsonSchema" required>
+  The combinator schema.
+</ResponseField>
+
+<ResponseField name="path" type="string" required>
+  Data path.
+</ResponseField>
+
+<ResponseField name="uischema" type="ControlElement" required>
+  The UI schema element.
+</ResponseField>
+
+<ResponseField name="rootSchema" type="JsonSchema" required>
+  Root schema for resolving references.
+</ResponseField>
+
+<ResponseField name="data" type="any">
+  Current data value.
+</ResponseField>
+
+<ResponseField name="indexOfFittingSchema" type="number">
+  Index of the schema that best matches the current data.
+</ResponseField>
+
+---
+
+## State management
+
+### JsonFormsCore
+
+Core JSON Forms state.
+
+<ResponseField name="data" type="any" required>
+  The form data.
+</ResponseField>
+
+<ResponseField name="schema" type="JsonSchema" required>
+  The JSON schema.
+</ResponseField>
+
+<ResponseField name="uischema" type="UISchemaElement" required>
+  The UI schema.
+</ResponseField>
+
+<ResponseField name="errors" type="ErrorObject[]">
+  Validation errors from Ajv.
+</ResponseField>
+
+<ResponseField name="additionalErrors" type="ErrorObject[]">
+  Additional custom validation errors.
+</ResponseField>
+
+<ResponseField name="validator" type="ValidateFunction">
+  Ajv validation function.
+</ResponseField>
+
+<ResponseField name="ajv" type="Ajv">
+  Ajv instance used for validation.
+</ResponseField>
+
+<ResponseField name="validationMode" type="ValidationMode">
+  Validation mode: `ValidateAndShow`, `ValidateAndHide`, or `NoValidation`.
+</ResponseField>
+
+---
+
+## Mapper functions
+
+JSON Forms provides mapper functions to connect state to renderer props.
+
+### mapStateToControlProps
+
+```typescript
+function mapStateToControlProps(
+  state: JsonFormsState,
+  ownProps: OwnPropsOfControl
+): StatePropsOfControl
+```
+
+Maps JSON Forms state to control renderer props.
+
+### mapDispatchToControlProps
+
+```typescript
+function mapDispatchToControlProps(
+  dispatch: Dispatch<AnyAction>
+): DispatchPropsOfControl
+```
+
+Maps dispatch to control renderer props.
+
+### mapStateToArrayControlProps
+
+```typescript
+function mapStateToArrayControlProps(
+  state: JsonFormsState,
+  ownProps: OwnPropsOfControl
+): StatePropsOfArrayControl
+```
+
+Maps state to array control props.
+
+### mapDispatchToArrayControlProps
+
+```typescript
+function mapDispatchToArrayControlProps(
+  dispatch: Dispatch<CoreActions>
+): DispatchPropsOfArrayControl
+```
+
+Maps dispatch to array control props.
+
+---
+
+## Example: Custom renderer
+
+```typescript
+import React from 'react';
+import {
+  ControlProps,
+  rankWith,
+  and,
+  isStringControl,
+  optionIs
+} from '@jsonforms/core';
+import { withJsonFormsControlProps } from '@jsonforms/react';
+
+const MyCustomRenderer = (props: ControlProps) => {
+  const { data, handleChange, path, label, errors, enabled } = props;
+  
+  return (
+    <div className="custom-control">
+      <label>{label}</label>
+      <input
+        value={data || ''}
+        onChange={(e) => handleChange(path, e.target.value)}
+        disabled={!enabled}
+      />
+      {errors && <span className="error">{errors}</span>}
+    </div>
+  );
+};
+
+export default withJsonFormsControlProps(MyCustomRenderer);
+
+// Tester: rank 5 for string controls with custom option
+export const myCustomRendererTester = rankWith(
+  5,
+  and(
+    isStringControl,
+    optionIs('custom', true)
+  )
+);
+```
+
+---
+
+## UI schema registry
+
+### JsonFormsUISchemaRegistryEntry
+
+Registry entry for dynamic UI schema selection.
+
+<ResponseField name="tester" type="UISchemaTester" required>
+  Function that returns a rank for UI schema selection based on schema and path.
+</ResponseField>
+
+<ResponseField name="uischema" type="UISchemaElement" required>
+  The UI schema to use when the tester matches.
+</ResponseField>
+
+### UISchemaTester
+
+```typescript
+type UISchemaTester = (
+  schema: JsonSchema,
+  schemaPath: string,
+  path: string
+) => number;
+```
+
+Function that determines which UI schema to use for a given schema element.

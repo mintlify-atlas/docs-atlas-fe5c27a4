@@ -1,0 +1,511 @@
+---
+title: Rules and Conditional Rendering
+description: Control visibility and enablement of form elements dynamically using JSON Forms rules system
+---
+
+## Overview
+
+Rules allow you to conditionally show, hide, enable, or disable UI schema elements based on the current form data. This enables dynamic forms that adapt to user input.
+
+## Rule Structure
+
+A rule consists of two parts:
+
+```typescript
+export interface Rule {
+  /**
+   * The effect of the rule
+   */
+  effect: RuleEffect;
+
+  /**
+   * The condition of the rule that must evaluate to true in order
+   * to trigger the effect.
+   */
+  condition: Condition;
+}
+```
+
+## Rule Effects
+
+Four rule effects are available:
+
+```typescript
+export enum RuleEffect {
+  /**
+   * Effect that hides the associated element.
+   */
+  HIDE = 'HIDE',
+  /**
+   * Effect that shows the associated element.
+   */
+  SHOW = 'SHOW',
+  /**
+   * Effect that enables the associated element.
+   */
+  ENABLE = 'ENABLE',
+  /**
+   * Effect that disables the associated element.
+   */
+  DISABLE = 'DISABLE',
+}
+```
+
+## Condition Types
+
+### Leaf Condition
+
+Compares a value at a specific scope to an expected value:
+
+```typescript
+export interface LeafCondition extends BaseCondition, Scoped {
+  type: 'LEAF';
+  /**
+   * The expected value when evaluating the condition
+   */
+  expectedValue: any;
+}
+```
+
+**Example:**
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/lastName",
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "type": "LEAF",
+      "scope": "#/properties/firstName",
+      "expectedValue": "John"
+    }
+  }
+}
+```
+
+The `lastName` field only shows when `firstName` equals "John".
+
+### Schema-Based Condition
+
+Validates data against a JSON Schema:
+
+```typescript
+export interface SchemaBasedCondition extends BaseCondition, Scoped {
+  schema: JsonSchema;
+  /**
+   * When the scope resolves to undefined and `failWhenUndefined` is set to `true`, 
+   * the condition will fail. Therefore the reverse effect will be applied.
+   */
+  failWhenUndefined?: boolean;
+}
+```
+
+**Example:**
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/zipCode",
+  "rule": {
+    "effect": "ENABLE",
+    "condition": {
+      "scope": "#/properties/country",
+      "schema": {
+        "const": "US"
+      }
+    }
+  }
+}
+```
+
+The `zipCode` field is enabled only when `country` is "US".
+
+**Using failWhenUndefined:**
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/email",
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "scope": "#/properties/notifyByEmail",
+      "schema": { "const": true },
+      "failWhenUndefined": true
+    }
+  }
+}
+```
+
+### Validate Function Condition
+
+Uses a custom validation function:
+
+```typescript
+export interface ValidateFunctionCondition extends BaseCondition, Scoped {
+  /**
+   * Validates whether the condition is fulfilled.
+   *
+   * @param data The data as resolved via the scope.
+   * @returns `true` if the condition is fulfilled
+   */
+  validate: (context: ValidateFunctionContext) => boolean;
+}
+
+export interface ValidateFunctionContext {
+  /** The resolved data scoped to the condition's scope. */
+  data: unknown;
+  /** The full data of the form. */
+  fullData: unknown;
+  /** Optional instance path. */
+  path: string | undefined;
+  /** The UISchemaElement containing the rule */
+  uischemaElement: UISchemaElement;
+  /** The form config */
+  config: unknown;
+}
+```
+
+**Example:**
+
+```typescript
+const uischema = {
+  type: 'Control',
+  scope: '#/properties/promoCode',
+  rule: {
+    effect: 'SHOW',
+    condition: {
+      scope: '#/properties/totalAmount',
+      validate: (context) => {
+        const { data } = context;
+        return data > 100; // Show promo code field if total > 100
+      }
+    }
+  }
+};
+```
+
+### OR Condition
+
+Combines multiple conditions with OR logic:
+
+```typescript
+export interface OrCondition extends ComposableCondition {
+  type: 'OR';
+}
+
+export interface ComposableCondition extends BaseCondition {
+  conditions: Condition[];
+}
+```
+
+**Example:**
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/discount",
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "type": "OR",
+      "conditions": [
+        {
+          "type": "LEAF",
+          "scope": "#/properties/membershipLevel",
+          "expectedValue": "Gold"
+        },
+        {
+          "type": "LEAF",
+          "scope": "#/properties/membershipLevel",
+          "expectedValue": "Platinum"
+        }
+      ]
+    }
+  }
+}
+```
+
+### AND Condition
+
+Combines multiple conditions with AND logic:
+
+```typescript
+export interface AndCondition extends ComposableCondition {
+  type: 'AND';
+}
+```
+
+**Example:**
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/veteranDiscount",
+  "rule": {
+    "effect": "ENABLE",
+    "condition": {
+      "type": "AND",
+      "conditions": [
+        {
+          "type": "LEAF",
+          "scope": "#/properties/isVeteran",
+          "expectedValue": true
+        },
+        {
+          "scope": "#/properties/age",
+          "schema": {
+            "type": "number",
+            "minimum": 18
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+## Rule Evaluation
+
+Rules are evaluated in the following manner:
+
+### Visibility Evaluation
+
+```typescript
+export const evalVisibility = (
+  uischema: UISchemaElement,
+  data: any,
+  path: string = undefined,
+  ajv: Ajv,
+  config: unknown
+): boolean => {
+  const fulfilled = isRuleFulfilled(uischema, data, path, ajv, config);
+
+  switch (uischema.rule.effect) {
+    case RuleEffect.HIDE:
+      return !fulfilled;
+    case RuleEffect.SHOW:
+      return fulfilled;
+    // visible by default
+    default:
+      return true;
+  }
+};
+```
+
+### Enablement Evaluation
+
+```typescript
+export const evalEnablement = (
+  uischema: UISchemaElement,
+  data: any,
+  path: string = undefined,
+  ajv: Ajv,
+  config: unknown
+): boolean => {
+  const fulfilled = isRuleFulfilled(uischema, data, path, ajv, config);
+
+  switch (uischema.rule.effect) {
+    case RuleEffect.DISABLE:
+      return !fulfilled;
+    case RuleEffect.ENABLE:
+      return fulfilled;
+    // enabled by default
+    default:
+      return true;
+  }
+};
+```
+
+## Common Patterns
+
+### Show Field Based on Checkbox
+
+```json
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/subscribe"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/email",
+      "rule": {
+        "effect": "SHOW",
+        "condition": {
+          "type": "LEAF",
+          "scope": "#/properties/subscribe",
+          "expectedValue": true
+        }
+      }
+    }
+  ]
+}
+```
+
+### Enable Field Based on Selection
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/otherReason",
+  "rule": {
+    "effect": "ENABLE",
+    "condition": {
+      "type": "LEAF",
+      "scope": "#/properties/reason",
+      "expectedValue": "other"
+    }
+  }
+}
+```
+
+### Complex Nested Conditions
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/specialOffer",
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "type": "AND",
+      "conditions": [
+        {
+          "type": "OR",
+          "conditions": [
+            {
+              "type": "LEAF",
+              "scope": "#/properties/customerType",
+              "expectedValue": "premium"
+            },
+            {
+              "type": "LEAF",
+              "scope": "#/properties/customerType",
+              "expectedValue": "vip"
+            }
+          ]
+        },
+        {
+          "scope": "#/properties/accountAge",
+          "schema": {
+            "type": "number",
+            "minimum": 365
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+## Rules on Layout Elements
+
+Rules can be applied to any UI schema element, including layouts:
+
+```json
+{
+  "type": "VerticalLayout",
+  "rule": {
+    "effect": "SHOW",
+    "condition": {
+      "type": "LEAF",
+      "scope": "#/properties/showAdvanced",
+      "expectedValue": true
+    }
+  },
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/advancedOption1"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/advancedOption2"
+    }
+  ]
+}
+```
+
+This hides/shows the entire layout and all its children.
+
+## Utility Functions
+
+JSON Forms provides utility functions for working with rules:
+
+```typescript
+// Check if element has a show/hide rule
+export const hasShowRule = (uischema: UISchemaElement): boolean => {
+  if (
+    uischema.rule &&
+    (uischema.rule.effect === RuleEffect.SHOW ||
+      uischema.rule.effect === RuleEffect.HIDE)
+  ) {
+    return true;
+  }
+  return false;
+};
+
+// Check if element has an enable/disable rule
+export const hasEnableRule = (uischema: UISchemaElement): boolean => {
+  if (
+    uischema.rule &&
+    (uischema.rule.effect === RuleEffect.ENABLE ||
+      uischema.rule.effect === RuleEffect.DISABLE)
+  ) {
+    return true;
+  }
+  return false;
+};
+
+// Check if element is visible
+export const isVisible = (
+  uischema: UISchemaElement,
+  data: any,
+  path: string = undefined,
+  ajv: Ajv,
+  config: unknown
+): boolean => {
+  if (uischema.rule) {
+    return evalVisibility(uischema, data, path, ajv, config);
+  }
+  return true;
+};
+
+// Check if element is enabled
+export const isEnabled = (
+  uischema: UISchemaElement,
+  data: any,
+  path: string = undefined,
+  ajv: Ajv,
+  config: unknown
+): boolean => {
+  if (uischema.rule) {
+    return evalEnablement(uischema, data, path, ajv, config);
+  }
+  return true;
+};
+```
+
+## Best Practices
+
+1. **Use SHOW instead of HIDE**: `SHOW` rules are more intuitive than `HIDE` rules
+2. **Keep conditions simple**: Complex nested conditions can be hard to maintain
+3. **Validate your rules**: Test edge cases and ensure rules behave correctly
+4. **Consider performance**: Rules are evaluated on every data change
+5. **Document complex rules**: Add comments explaining the business logic
+6. **Use schema-based conditions**: They're more powerful than leaf conditions for complex validations
+7. **Leverage AND/OR**: Compose simple conditions rather than creating complex custom validators
+
+## Debugging Rules
+
+To debug rule evaluation:
+
+1. Check the current form data
+2. Verify the scope paths in your conditions
+3. Ensure expected values match exactly (including type)
+4. Test each condition independently
+5. Use browser dev tools to inspect the rule evaluation logic

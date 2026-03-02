@@ -1,0 +1,506 @@
+---
+title: Renderers
+description: Understand how renderers work in JSON Forms and how to create custom ones
+---
+
+Renderers are the React components that transform JSON Schema and UI Schema into actual UI elements. JSON Forms uses a powerful tester-based system to automatically select the right renderer for each element.
+
+## What are Renderers?
+
+A renderer is a React component that:
+
+1. Receives schema and UI schema information via props
+2. Renders the appropriate UI control (text input, checkbox, etc.)
+3. Handles user interactions and updates data
+
+```typescript
+type Renderer =
+  | RendererComponent<RendererProps & any, {}>
+  | StatelessRenderer<RendererProps & any>;
+```
+
+## How Renderers are Selected
+
+JSON Forms uses a **tester-based registration system**. Each renderer is paired with a tester function that determines if the renderer can handle a specific UI schema element.
+
+### The Tester System
+
+A tester is a function that returns a number indicating applicability:
+
+```typescript
+type RankedTester = (
+  uischema: UISchemaElement,
+  schema: JsonSchema,
+  context: TesterContext
+) => number;
+
+interface TesterContext {
+  rootSchema: JsonSchema;  // For resolving $ref
+  config: any;             // Form-wide configuration
+}
+```
+
+**Return values:**
+- `-1` (NOT_APPLICABLE) - Cannot handle this element
+- `0+` - Can handle with this priority (higher = better match)
+
+### Example: String Control Tester
+
+From `packages/material-renderers/src/controls/MaterialTextControl.tsx`:
+
+```typescript
+import { isStringControl, rankWith } from '@jsonforms/core';
+
+export const materialTextControlTester: RankedTester = rankWith(
+  1,
+  isStringControl
+);
+```
+
+The `isStringControl` tester is defined in `packages/core/src/testers/testers.ts`:
+
+```typescript
+export const isStringControl = and(
+  uiTypeIs('Control'),
+  schemaTypeIs('string')
+);
+```
+
+This tester:
+1. Checks if UI schema type is 'Control'
+2. Checks if JSON schema type is 'string'
+3. Returns rank 1 if both conditions match
+
+### Built-in Testers
+
+JSON Forms provides many built-in testers:
+
+<Tabs>
+  <Tab title="Type Testers">
+    ```typescript
+    // Basic types
+    export const isBooleanControl = and(
+      uiTypeIs('Control'),
+      schemaTypeIs('boolean')
+    );
+    
+    export const isStringControl = and(
+      uiTypeIs('Control'),
+      schemaTypeIs('string')
+    );
+    
+    export const isIntegerControl = and(
+      uiTypeIs('Control'),
+      schemaTypeIs('integer')
+    );
+    
+    export const isNumberControl = and(
+      uiTypeIs('Control'),
+      schemaTypeIs('number')
+    );
+    ```
+  </Tab>
+  
+  <Tab title="Format Testers">
+    ```typescript
+    // Date/Time formats
+    export const isDateControl = and(
+      uiTypeIs('Control'),
+      or(formatIs('date'), optionIs('format', 'date'))
+    );
+    
+    export const isTimeControl = and(
+      uiTypeIs('Control'),
+      or(formatIs('time'), optionIs('format', 'time'))
+    );
+    
+    export const isDateTimeControl = and(
+      uiTypeIs('Control'),
+      or(formatIs('date-time'), optionIs('format', 'date-time'))
+    );
+    ```
+  </Tab>
+  
+  <Tab title="Complex Testers">
+    ```typescript
+    // Enums
+    export const isEnumControl = and(
+      uiTypeIs('Control'),
+      schemaMatches((schema) => isEnumSchema(schema))
+    );
+    
+    export const isOneOfEnumControl = and(
+      uiTypeIs('Control'),
+      schemaMatches((schema) => isOneOfEnumSchema(schema))
+    );
+    
+    // Arrays
+    export const isObjectArrayControl = and(
+      uiTypeIs('Control'),
+      isObjectArray
+    );
+    
+    // Multi-line text
+    export const isMultiLineControl = and(
+      uiTypeIs('Control'),
+      optionIs('multi', true)
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Tester Composition
+
+You can compose testers using logical operators:
+
+```typescript
+// AND: All testers must match
+export const and = (
+  ...testers: Tester[]
+): Tester =>
+  (uischema, schema, context) =>
+    testers.reduce(
+      (acc, tester) => acc && tester(uischema, schema, context),
+      true
+    );
+
+// OR: At least one tester must match
+export const or = (
+  ...testers: Tester[]
+): Tester =>
+  (uischema, schema, context) =>
+    testers.reduce(
+      (acc, tester) => acc || tester(uischema, schema, context),
+      false
+    );
+
+// NOT: Inverts a tester
+export const not = (tester: Tester): Tester =>
+  (uischema, schema, context) =>
+    !tester(uischema, schema, context);
+```
+
+### Example: Composed Tester
+
+```typescript
+const isRequiredStringControl = and(
+  uiTypeIs('Control'),
+  schemaTypeIs('string'),
+  schemaMatches((schema, rootSchema) => {
+    // Check if field is in required array
+    return true; // Your logic here
+  })
+);
+```
+
+## Ranked Testers
+
+The `rankWith` helper creates a ranked tester:
+
+```typescript
+export const rankWith = (
+  rank: number,
+  tester: Tester
+) => (
+  uischema: UISchemaElement,
+  schema: JsonSchema,
+  context: TesterContext
+): number => {
+  if (tester(uischema, schema, context)) {
+    return rank;
+  }
+  return NOT_APPLICABLE; // -1
+};
+```
+
+**Common ranks:**
+- `1` - Basic renderer
+- `2` - More specific renderer
+- `3` - Specialized renderer
+- `4+` - Very specific/custom renderer
+
+<Info>
+When multiple renderers match, JSON Forms selects the one with the highest rank.
+</Info>
+
+## Renderer Registration
+
+Renderers are registered in an array:
+
+```typescript
+interface JsonFormsRendererRegistryEntry {
+  tester: RankedTester;
+  renderer: any;  // React component
+}
+```
+
+From `packages/core/src/reducers/renderers.ts`:
+
+```typescript
+export const rendererReducer: Reducer<
+  JsonFormsRendererRegistryEntry[],
+  ValidRendererReducerActions
+> = (state = [], action) => {
+  switch (action.type) {
+    case ADD_RENDERER:
+      return state.concat([{
+        tester: action.tester,
+        renderer: action.renderer
+      }]);
+    case REMOVE_RENDERER:
+      return state.filter((t) => t.tester !== action.tester);
+    default:
+      return state;
+  }
+};
+```
+
+### Using Renderer Sets
+
+JSON Forms provides pre-built renderer sets:
+
+```tsx
+import { materialRenderers } from '@jsonforms/material-renderers';
+import { vanillaRenderers } from '@jsonforms/vanilla-renderers';
+
+<JsonForms
+  schema={schema}
+  uischema={uischema}
+  data={data}
+  renderers={materialRenderers}
+  onChange={({ data }) => setData(data)}
+/>
+```
+
+## Renderer Props
+
+Renderers receive these props:
+
+```typescript
+interface RendererProps {
+  // Core
+  uischema: UISchemaElement;
+  schema: JsonSchema;
+  path: string;
+  enabled: boolean;
+  visible: boolean;
+  
+  // Data
+  data?: any;
+  
+  // Handlers
+  handleChange(path: string, value: any): void;
+  
+  // Validation
+  errors?: ErrorObject[];
+  
+  // Context
+  rootSchema: JsonSchema;
+  config?: any;
+  
+  // Additional
+  label?: string;
+  required?: boolean;
+  id?: string;
+  cells?: JsonFormsCellRendererRegistryEntry[];
+  renderers?: JsonFormsRendererRegistryEntry[];
+}
+```
+
+## Creating a Custom Renderer
+
+Here's a complete example of a custom renderer:
+
+```tsx
+import React from 'react';
+import {
+  ControlProps,
+  rankWith,
+  schemaMatches,
+  and,
+  uiTypeIs
+} from '@jsonforms/core';
+import { withJsonFormsControlProps } from '@jsonforms/react';
+
+// 1. Create the renderer component
+const RatingControl = (props: ControlProps) => {
+  const { data, handleChange, path, schema } = props;
+  const maxValue = schema.maximum || 5;
+  
+  return (
+    <div>
+      {Array.from({ length: maxValue }, (_, i) => i + 1).map(value => (
+        <button
+          key={value}
+          onClick={() => handleChange(path, value)}
+          style={{
+            backgroundColor: data >= value ? 'gold' : 'gray'
+          }}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// 2. Create the tester
+const ratingControlTester = rankWith(
+  3, // Higher rank than default number control
+  and(
+    uiTypeIs('Control'),
+    schemaMatches(schema => 
+      schema.type === 'number' &&
+      schema.maximum !== undefined &&
+      schema.minimum === 1
+    )
+  )
+);
+
+// 3. Export wrapped component and tester
+export default withJsonFormsControlProps(RatingControl);
+export { ratingControlTester };
+```
+
+### Using the Custom Renderer
+
+```tsx
+import { materialRenderers } from '@jsonforms/material-renderers';
+import RatingControl, { ratingControlTester } from './RatingControl';
+
+const renderers = [
+  ...materialRenderers,
+  { tester: ratingControlTester, renderer: RatingControl }
+];
+
+<JsonForms
+  schema={schema}
+  data={data}
+  renderers={renderers}
+  onChange={({ data }) => setData(data)}
+/>
+```
+
+## Layout Renderers
+
+Layout renderers handle container elements:
+
+```tsx
+import { LayoutProps } from '@jsonforms/core';
+import { JsonFormsDispatch } from '@jsonforms/react';
+
+const VerticalLayoutRenderer = ({
+  uischema,
+  schema,
+  path,
+  enabled,
+  renderers,
+  cells
+}: LayoutProps) => {
+  const verticalLayout = uischema as VerticalLayout;
+  
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {verticalLayout.elements.map((element, index) => (
+        <JsonFormsDispatch
+          key={index}
+          uischema={element}
+          schema={schema}
+          path={path}
+          enabled={enabled}
+          renderers={renderers}
+          cells={cells}
+        />
+      ))}
+    </div>
+  );
+};
+```
+
+<Note>
+Layout renderers use `JsonFormsDispatch` to recursively render child elements.
+</Note>
+
+## Renderer Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use specific testers">
+    Create testers that are as specific as possible to avoid conflicts:
+    
+    ```typescript
+    // Too generic - might conflict
+    rankWith(1, schemaTypeIs('string'))
+    
+    // Better - more specific
+    rankWith(3, and(
+      uiTypeIs('Control'),
+      schemaTypeIs('string'),
+      optionIs('format', 'color')
+    ))
+    ```
+  </Accordion>
+  
+  <Accordion title="Use appropriate ranks">
+    - Rank 1-2: Basic renderers
+    - Rank 3-4: Specialized renderers
+    - Rank 5+: Very specific/override renderers
+  </Accordion>
+  
+  <Accordion title="Handle all props">
+    Always handle these props:
+    - `visible` - Hide when false
+    - `enabled` - Disable when false
+    - `errors` - Display validation errors
+    - `required` - Show required indicator
+  </Accordion>
+  
+  <Accordion title="Use HOCs for integration">
+    Use `withJsonFormsControlProps` or `withJsonFormsLayoutProps` to connect your renderer to the JSON Forms state.
+  </Accordion>
+</AccordionGroup>
+
+## Advanced: Tester Utilities
+
+JSON Forms provides utilities for common tester patterns:
+
+```typescript
+// Check schema matches a predicate
+export const schemaMatches = (
+  predicate: (schema: JsonSchema, rootSchema: JsonSchema) => boolean
+): Tester => (uischema, schema, context) => {
+  if (!isControl(uischema)) return false;
+  const resolvedSchema = resolveSchema(
+    schema,
+    uischema.scope,
+    context?.rootSchema
+  );
+  return predicate(resolvedSchema, context?.rootSchema);
+};
+
+// Check UI schema has specific option
+export const optionIs = (
+  optionName: string,
+  optionValue: any
+): Tester => (uischema) => {
+  const options = uischema.options;
+  return !isEmpty(options) && options[optionName] === optionValue;
+};
+
+// Check scope ends with specific string
+export const scopeEndsWith = (expected: string): Tester =>
+  (uischema) => {
+    if (!isControl(uischema)) return false;
+    return endsWith(uischema.scope, expected);
+  };
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Data Binding" icon="arrows-rotate" href="/concepts/data-binding">
+    Learn how renderers interact with form data
+  </Card>
+  <Card title="Custom Renderers Tutorial" icon="hammer" href="/tutorials/custom-renderers">
+    Step-by-step guide to creating custom renderers
+  </Card>
+</CardGroup>

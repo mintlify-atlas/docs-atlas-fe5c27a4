@@ -1,0 +1,561 @@
+---
+title: Testers API
+description: Functions to determine which renderer should handle a UI schema element
+---
+
+Testers determine which renderer is most appropriate for rendering a given UI schema element. They return a numeric rank, with higher values indicating better matches.
+
+## Core Concepts
+
+### NOT_APPLICABLE
+
+Constant indicating a tester cannot handle a schema/UI schema combination.
+
+```typescript
+export const NOT_APPLICABLE = -1;
+```
+
+### Tester
+
+Function that tests if a renderer can handle a UI schema element.
+
+```typescript
+type Tester = (
+  uischema: UISchemaElement,
+  schema: JsonSchema,
+  context: TesterContext
+) => boolean
+```
+
+### RankedTester
+
+Function that returns a numeric rank indicating renderer applicability.
+
+```typescript
+type RankedTester = (
+  uischema: UISchemaElement,
+  schema: JsonSchema,
+  context: TesterContext
+) => number
+```
+
+### TesterContext
+
+Additional context passed to testers.
+
+```typescript
+interface TesterContext {
+  rootSchema: JsonSchema;  // Root schema for reference resolution
+  config: any;              // Form-wide configuration
+}
+```
+
+## Creating Ranked Testers
+
+### rankWith
+
+Create a ranked tester from a boolean tester and rank.
+
+```typescript
+function rankWith(
+  rank: number,
+  tester: Tester
+): RankedTester
+```
+
+<ParamField path="rank" type="number" required>
+  Numeric rank (higher = higher priority). Typically 1-10.
+</ParamField>
+
+<ParamField path="tester" type="Tester" required>
+  Boolean tester function
+</ParamField>
+
+<ResponseField name="return" type="RankedTester">
+  Ranked tester that returns `rank` if tester passes, `NOT_APPLICABLE` otherwise
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { rankWith, isControl, schemaTypeIs, and } from '@jsonforms/core';
+
+// Create a ranked tester for string controls
+const stringControlTester = rankWith(
+  3,
+  and(isControl, schemaTypeIs('string'))
+);
+
+// Usage in renderer registration
+import { MyStringControl } from './MyStringControl';
+
+export default {
+  tester: stringControlTester,
+  renderer: MyStringControl
+};
+```
+
+### withIncreasedRank
+
+Increase the rank of an existing ranked tester.
+
+```typescript
+function withIncreasedRank(
+  by: number,
+  rankedTester: RankedTester
+): RankedTester
+```
+
+<ParamField path="by" type="number" required>
+  Amount to increase rank by
+</ParamField>
+
+<ParamField path="rankedTester" type="RankedTester" required>
+  Existing ranked tester
+</ParamField>
+
+<ResponseField name="return" type="RankedTester">
+  New ranked tester with increased rank
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { withIncreasedRank, stringControlTester } from '@jsonforms/core';
+
+// Make string control higher priority
+const highPriorityStringTester = withIncreasedRank(2, stringControlTester);
+```
+
+## UI Schema Testers
+
+### isControl
+
+Test if UI schema element is a control.
+
+```typescript
+function isControl(uischema: any): uischema is ControlElement
+```
+
+<ParamField path="uischema" type="any" required>
+  UI schema element to test
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  True if uischema is a control (has a `scope` property)
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { isControl } from '@jsonforms/core';
+
+if (isControl(uischema)) {
+  console.log('Scope:', uischema.scope);
+}
+```
+
+### uiTypeIs
+
+Test if UI schema has a specific type.
+
+```typescript
+function uiTypeIs(expected: string): Tester
+```
+
+<ParamField path="expected" type="string" required>
+  Expected UI schema type (e.g., 'Control', 'VerticalLayout')
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester function
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { uiTypeIs } from '@jsonforms/core';
+
+const isControlTester = uiTypeIs('Control');
+const isLayoutTester = uiTypeIs('VerticalLayout');
+```
+
+## Schema Testers
+
+### schemaMatches
+
+Test if resolved schema matches a predicate.
+
+```typescript
+function schemaMatches(
+  predicate: (schema: JsonSchema, rootSchema: JsonSchema) => boolean
+): Tester
+```
+
+<ParamField path="predicate" type="(schema: JsonSchema, rootSchema: JsonSchema) => boolean" required>
+  Function to test the resolved schema
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester that resolves the control's scope and applies the predicate
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { schemaMatches } from '@jsonforms/core';
+
+const hasEnumTester = schemaMatches((schema) => {
+  return schema.enum !== undefined;
+});
+```
+
+### schemaTypeIs
+
+Test if schema has a specific type.
+
+```typescript
+function schemaTypeIs(expectedType: string): Tester
+```
+
+<ParamField path="expectedType" type="string" required>
+  Expected schema type ('string', 'number', 'integer', 'boolean', 'object', 'array')
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester function
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { schemaTypeIs } from '@jsonforms/core';
+
+const isStringSchema = schemaTypeIs('string');
+const isNumberSchema = schemaTypeIs('number');
+const isArraySchema = schemaTypeIs('array');
+```
+
+### formatIs
+
+Test if schema has a specific format.
+
+```typescript
+function formatIs(expectedFormat: string): Tester
+```
+
+<ParamField path="expectedFormat" type="string" required>
+  Expected schema format (e.g., 'date', 'time', 'date-time', 'email')
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester for string schemas with the specified format
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { formatIs, rankWith, and, isControl } from '@jsonforms/core';
+
+const dateControlTester = rankWith(
+  3,
+  and(isControl, formatIs('date'))
+);
+```
+
+### schemaSubPathMatches
+
+Test a sub-path of the resolved schema.
+
+```typescript
+function schemaSubPathMatches(
+  subPath: string,
+  predicate: (schema: JsonSchema, rootSchema: JsonSchema) => boolean
+): Tester
+```
+
+<ParamField path="subPath" type="string" required>
+  Path within the resolved schema (e.g., 'items', 'properties.foo')
+</ParamField>
+
+<ParamField path="predicate" type="(schema: JsonSchema, rootSchema: JsonSchema) => boolean" required>
+  Predicate to apply to the sub-schema
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester function
+</ResponseField>
+
+## Scope Testers
+
+### scopeEndsWith
+
+Test if control scope ends with a string.
+
+```typescript
+function scopeEndsWith(expected: string): Tester
+```
+
+<ParamField path="expected" type="string" required>
+  Expected scope ending
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester function
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { scopeEndsWith } from '@jsonforms/core';
+
+const endsWithEmail = scopeEndsWith('email');
+// Matches: '#/properties/email', '#/properties/user/properties/email'
+```
+
+### scopeEndIs
+
+Test if the last segment of the scope matches exactly.
+
+```typescript
+function scopeEndIs(expected: string): Tester
+```
+
+<ParamField path="expected" type="string" required>
+  Expected last segment
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester function
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { scopeEndIs } from '@jsonforms/core';
+
+const isEmailField = scopeEndIs('email');
+// Matches: '#/properties/email' but NOT '#/properties/primaryEmail'
+```
+
+## Option Testers
+
+### optionIs
+
+Test if UI schema has an option with a specific value.
+
+```typescript
+function optionIs(optionName: string, optionValue: any): Tester
+```
+
+<ParamField path="optionName" type="string" required>
+  Option name to check
+</ParamField>
+
+<ParamField path="optionValue" type="any" required>
+  Expected option value
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester function
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { optionIs, and, isControl, rankWith } from '@jsonforms/core';
+
+const multilineTester = rankWith(
+  3,
+  and(isControl, optionIs('multi', true))
+);
+```
+
+### hasOption
+
+Test if UI schema has an option defined.
+
+```typescript
+function hasOption(optionName: string): Tester
+```
+
+<ParamField path="optionName" type="string" required>
+  Option name to check for
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester that returns true if option exists (regardless of value)
+</ResponseField>
+
+## Composition Testers
+
+### and
+
+Combine testers with logical AND.
+
+```typescript
+function and(...testers: Tester[]): Tester
+```
+
+<ParamField path="testers" type="Tester[]" required>
+  Testers to combine
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester that returns true only if all testers pass
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { and, isControl, schemaTypeIs, formatIs } from '@jsonforms/core';
+
+const dateControlTester = and(
+  isControl,
+  schemaTypeIs('string'),
+  formatIs('date')
+);
+```
+
+### or
+
+Combine testers with logical OR.
+
+```typescript
+function or(...testers: Tester[]): Tester
+```
+
+<ParamField path="testers" type="Tester[]" required>
+  Testers to combine
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester that returns true if any tester passes
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { or, formatIs, optionIs } from '@jsonforms/core';
+
+const dateFormatTester = or(
+  formatIs('date'),
+  optionIs('format', 'date')
+);
+```
+
+### not
+
+Negate a tester.
+
+```typescript
+function not(tester: Tester): Tester
+```
+
+<ParamField path="tester" type="Tester" required>
+  Tester to negate
+</ParamField>
+
+<ResponseField name="return" type="Tester">
+  Tester that returns opposite of input tester
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { not, schemaTypeIs } from '@jsonforms/core';
+
+const notStringTester = not(schemaTypeIs('string'));
+```
+
+## Predefined Testers
+
+JSON Forms provides predefined testers for common scenarios:
+
+```typescript
+// Basic type controls
+export const isBooleanControl: Tester;
+export const isIntegerControl: Tester;
+export const isNumberControl: Tester;
+export const isStringControl: Tester;
+export const isObjectControl: Tester;
+
+// Format controls
+export const isDateControl: Tester;
+export const isTimeControl: Tester;
+export const isDateTimeControl: Tester;
+
+// Enum controls
+export const isEnumControl: Tester;
+export const isOneOfEnumControl: Tester;
+
+// Array controls
+export const isObjectArrayControl: Tester;
+export const isPrimitiveArrayControl: Tester;
+export const isObjectArray: Tester;
+
+// Combinator controls
+export const isAllOfControl: Tester;
+export const isAnyOfControl: Tester;
+export const isOneOfControl: Tester;
+
+// Special controls
+export const isMultiLineControl: Tester;
+export const isRangeControl: Tester;
+export const isNumberFormatControl: Tester;
+```
+
+**Example Usage:**
+
+```typescript
+import { rankWith, isStringControl } from '@jsonforms/core';
+
+export const MyStringControlTester = rankWith(3, isStringControl);
+```
+
+## Tester Best Practices
+
+### Rank Guidelines
+
+- **1-2**: Generic/fallback renderers
+- **3-5**: Standard renderers for basic types
+- **6-8**: Specialized renderers (format-specific, options)
+- **9-10**: Very specific renderers (custom business logic)
+
+### Example Ranking Strategy
+
+```typescript
+import { rankWith, and, isControl, schemaTypeIs, formatIs } from '@jsonforms/core';
+
+// Generic text input (rank 3)
+const textTester = rankWith(3, and(isControl, schemaTypeIs('string')));
+
+// Email input (rank 5)
+const emailTester = rankWith(5, and(isControl, formatIs('email')));
+
+// Custom business email (rank 8)
+const businessEmailTester = rankWith(
+  8,
+  and(isControl, formatIs('email'), scopeEndsWith('businessEmail'))
+);
+```
+
+### Efficient Testers
+
+```typescript
+import { and, isControl, schemaTypeIs } from '@jsonforms/core';
+
+// Good: Fast checks first
+const efficientTester = and(
+  isControl,              // Fast UI schema check
+  schemaTypeIs('string'), // Schema resolution
+  customCheck             // Expensive custom logic
+);
+
+// Less efficient: Expensive checks first
+const inefficientTester = and(
+  customExpensiveCheck,   // Slow
+  schemaTypeIs('string'), // Medium
+  isControl               // Fast
+);
+```

@@ -1,0 +1,220 @@
+---
+title: Basic Forms
+description: Learn how to create basic forms with JSON Forms using simple schemas and controls
+---
+
+Basic forms are the foundation of JSON Forms. They demonstrate how to render simple form controls from a JSON Schema definition.
+
+## Simple Task Form
+
+This example shows a basic task management form with text input, checkbox, date picker, and dropdown.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "due_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "recurrence": {
+          "type": "string",
+          "enum": ["Never", "Daily", "Weekly", "Monthly"]
+        }
+      },
+      "required": ["name", "due_date"]
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "label": false,
+          "scope": "#/properties/done"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/due_date"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/recurrence"
+            }
+          ]
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Data">
+    ```json
+    {}
+    ```
+  </Tab>
+</Tabs>
+
+## Person Form
+
+A more comprehensive example with nested objects and multiple field types.
+
+<Tabs>
+  <Tab title="Schema">
+    ```json
+    {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Please enter your name"
+        },
+        "vegetarian": {
+          "type": "boolean"
+        },
+        "birthDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Please enter your birth date."
+        },
+        "nationality": {
+          "type": "string",
+          "enum": ["DE", "IT", "JP", "US", "RU", "Other"]
+        },
+        "personalData": {
+          "type": "object",
+          "properties": {
+            "age": {
+              "type": "integer",
+              "description": "Please enter your age."
+            },
+            "height": {
+              "type": "number"
+            },
+            "drivingSkill": {
+              "type": "number",
+              "maximum": 10,
+              "minimum": 1,
+              "default": 7
+            }
+          },
+          "required": ["age", "height"]
+        },
+        "occupation": {
+          "type": "string"
+        },
+        "postalCode": {
+          "type": "string",
+          "maxLength": 5
+        }
+      },
+      "required": ["occupation", "nationality"]
+    }
+    ```
+  </Tab>
+  <Tab title="UI Schema">
+    ```json
+    {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/name"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/personalData/properties/age"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/birthDate"
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "text": "Additional Information"
+        },
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/personalData/properties/height"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/nationality"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/occupation",
+              "options": {
+                "suggestion": [
+                  "Accountant",
+                  "Engineer",
+                  "Freelancer",
+                  "Journalism",
+                  "Physician",
+                  "Student",
+                  "Teacher",
+                  "Other"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Data">
+    ```json
+    {
+      "name": "John Doe",
+      "vegetarian": false,
+      "birthDate": "1985-06-02",
+      "personalData": {
+        "age": 34
+      },
+      "postalCode": "12345"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Key Features
+
+- **Required Fields**: Use the `required` array in the schema to mark mandatory fields
+- **Validation**: JSON Schema validation (minLength, maxLength, minimum, maximum) is automatically enforced
+- **Field Types**: Supports string, number, integer, boolean, date, and enum types
+- **Nested Objects**: Access nested properties using JSON Pointer syntax in the scope (e.g., `#/properties/personalData/properties/age`)
+- **Control Options**: Add suggestions, placeholders, and other control-specific options
+
+## Next Steps
+
+- Learn about [Layouts](/examples/layouts) to organize your forms
+- Explore [Arrays](/examples/arrays) for handling lists of items
+- See [Complex Schemas](/examples/complex-schemas) for advanced patterns

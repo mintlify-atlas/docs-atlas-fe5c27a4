@@ -1,0 +1,403 @@
+---
+title: Actions API
+description: Action creators for managing JSON Forms state
+---
+
+Action creators for dispatching state changes in JSON Forms. These functions create action objects compatible with Redux reducers.
+
+## Core Actions
+
+### init
+
+Initialize JSON Forms with data, schema, and UI schema.
+
+```typescript
+function init(
+  data: any,
+  schema?: JsonSchema,
+  uischema?: UISchemaElement,
+  options?: InitActionOptions | AJV
+): InitAction
+```
+
+<ParamField path="data" type="any" required>
+  The initial form data
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema">
+  The JSON schema describing the data structure. If not provided, a schema will be generated from the data.
+</ParamField>
+
+<ParamField path="uischema" type="UISchemaElement">
+  The UI schema describing how to render the form. If not provided, a default UI schema will be generated.
+</ParamField>
+
+<ParamField path="options" type="InitActionOptions | AJV">
+  Configuration options:
+  - `ajv`: Custom AJV instance for validation
+  - `validationMode`: Validation mode ('ValidateAndShow', 'ValidateAndHide', 'NoValidation')
+  - `additionalErrors`: Additional validation errors
+</ParamField>
+
+<ResponseField name="return" type="InitAction">
+  Action object with type `jsonforms/INIT`
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { init } from '@jsonforms/core';
+
+const action = init(
+  { name: 'John', age: 30 },
+  {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      age: { type: 'number' }
+    }
+  },
+  {
+    type: 'VerticalLayout',
+    elements: [
+      { type: 'Control', scope: '#/properties/name' },
+      { type: 'Control', scope: '#/properties/age' }
+    ]
+  }
+);
+```
+
+### update
+
+Update form data at a specific path.
+
+```typescript
+function update(
+  path: string,
+  updater: (existingData: any) => any,
+  context?: object
+): UpdateAction
+```
+
+<ParamField path="path" type="string" required>
+  Data path in dot notation (e.g., 'person.address.city')
+</ParamField>
+
+<ParamField path="updater" type="(existingData: any) => any" required>
+  Function that receives the current value and returns the new value
+</ParamField>
+
+<ParamField path="context" type="object">
+  Optional context object, typically an `UpdateArrayContext` for array operations
+</ParamField>
+
+<ResponseField name="return" type="UpdateAction">
+  Action object with type `jsonforms/UPDATE`
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { update } from '@jsonforms/core';
+
+// Update a simple value
+const action = update('name', () => 'Jane');
+
+// Update with context for array operations
+const arrayAction = update(
+  'items',
+  (items) => [...items, newItem],
+  { type: 'ADD', values: [newItem] }
+);
+```
+
+### updateCore
+
+Update multiple core state properties at once.
+
+```typescript
+function updateCore(
+  data: any,
+  schema: JsonSchema,
+  uischema?: UISchemaElement,
+  options?: AJV | InitActionOptions
+): UpdateCoreAction
+```
+
+<ParamField path="data" type="any" required>
+  New form data
+</ParamField>
+
+<ParamField path="schema" type="JsonSchema" required>
+  New JSON schema
+</ParamField>
+
+<ParamField path="uischema" type="UISchemaElement">
+  New UI schema
+</ParamField>
+
+<ParamField path="options" type="AJV | InitActionOptions">
+  AJV instance or options object
+</ParamField>
+
+<ResponseField name="return" type="UpdateCoreAction">
+  Action object with type `jsonforms/UPDATE_CORE`
+</ResponseField>
+
+### setSchema
+
+Set or update the JSON schema.
+
+```typescript
+function setSchema(schema: JsonSchema): SetSchemaAction
+```
+
+<ParamField path="schema" type="JsonSchema" required>
+  The new JSON schema
+</ParamField>
+
+<ResponseField name="return" type="SetSchemaAction">
+  Action object with type `jsonforms/SET_SCHEMA`
+</ResponseField>
+
+### setUISchema
+
+Set or update the UI schema.
+
+```typescript
+function setUISchema(uischema: UISchemaElement): SetUISchemaAction
+```
+
+<ParamField path="uischema" type="UISchemaElement" required>
+  The new UI schema
+</ParamField>
+
+<ResponseField name="return" type="SetUISchemaAction">
+  Action object with type `jsonforms/SET_UISCHEMA`
+</ResponseField>
+
+### updateErrors
+
+Update validation errors.
+
+```typescript
+function updateErrors(errors: ErrorObject[]): UpdateErrorsAction
+```
+
+<ParamField path="errors" type="ErrorObject[]" required>
+  Array of AJV error objects
+</ParamField>
+
+<ResponseField name="return" type="UpdateErrorsAction">
+  Action object with type `jsonforms/UPDATE_ERRORS`
+</ResponseField>
+
+### setValidationMode
+
+Set the validation mode.
+
+```typescript
+function setValidationMode(
+  validationMode: ValidationMode
+): SetValidationModeAction
+```
+
+<ParamField path="validationMode" type="ValidationMode" required>
+  One of: 'ValidateAndShow', 'ValidateAndHide', 'NoValidation'
+</ParamField>
+
+<ResponseField name="return" type="SetValidationModeAction">
+  Action object with type `jsonforms/SET_VALIDATION_MODE`
+</ResponseField>
+
+## Renderer Actions
+
+### registerRenderer
+
+Register a custom renderer.
+
+```typescript
+function registerRenderer(
+  tester: RankedTester,
+  renderer: any
+): AddRendererAction
+```
+
+<ParamField path="tester" type="RankedTester" required>
+  Function that returns a rank number indicating renderer applicability
+</ParamField>
+
+<ParamField path="renderer" type="any" required>
+  The renderer component (React, Angular, Vue, etc.)
+</ParamField>
+
+<ResponseField name="return" type="AddRendererAction">
+  Action object with type `jsonforms/ADD_RENDERER`
+</ResponseField>
+
+### unregisterRenderer
+
+Unregister a custom renderer.
+
+```typescript
+function unregisterRenderer(
+  tester: RankedTester,
+  renderer: any
+): RemoveRendererAction
+```
+
+### registerCell
+
+Register a custom cell renderer.
+
+```typescript
+function registerCell(
+  tester: RankedTester,
+  cell: any
+): AddCellRendererAction
+```
+
+### unregisterCell
+
+Unregister a custom cell renderer.
+
+```typescript
+function unregisterCell(
+  tester: RankedTester,
+  cell: any
+): RemoveCellRendererAction
+```
+
+## UI Schema Actions
+
+### registerUISchema
+
+Register a UI schema for dynamic resolution.
+
+```typescript
+function registerUISchema(
+  tester: UISchemaTester,
+  uischema: UISchemaElement
+): AddUISchemaAction
+```
+
+<ParamField path="tester" type="UISchemaTester" required>
+  Function that returns a rank number for schema matching
+</ParamField>
+
+<ParamField path="uischema" type="UISchemaElement" required>
+  The UI schema to register
+</ParamField>
+
+<ResponseField name="return" type="AddUISchemaAction">
+  Action object with type `jsonforms/ADD_UI_SCHEMA`
+</ResponseField>
+
+### unregisterUISchema
+
+Unregister a UI schema.
+
+```typescript
+function unregisterUISchema(
+  tester: UISchemaTester
+): RemoveUISchemaAction
+```
+
+## Configuration Actions
+
+### setConfig
+
+Set form-wide configuration options.
+
+```typescript
+function setConfig(config: any): SetConfigAction
+```
+
+<ParamField path="config" type="any" required>
+  Configuration object (structure depends on renderers)
+</ParamField>
+
+<ResponseField name="return" type="SetConfigAction">
+  Action object with type `jsonforms/SET_CONFIG`
+</ResponseField>
+
+## Internationalization Actions
+
+### setLocale
+
+Set the current locale.
+
+```typescript
+function setLocale(locale: string | undefined): SetLocaleAction
+```
+
+### setTranslator
+
+Set translation functions.
+
+```typescript
+function setTranslator(
+  translator?: Translator,
+  errorTranslator?: ErrorTranslator
+): SetTranslatorAction
+```
+
+### updateI18n
+
+Update locale and translators.
+
+```typescript
+function updateI18n(
+  locale: string | undefined,
+  translator: Translator | undefined,
+  errorTranslator: ErrorTranslator | undefined
+): UpdateI18nAction
+```
+
+## Default Data Actions
+
+### registerDefaultData
+
+Register default data for a schema path.
+
+```typescript
+function registerDefaultData(
+  schemaPath: string,
+  data: any
+): RegisterDefaultDataAction
+```
+
+### unregisterDefaultData
+
+Unregister default data for a schema path.
+
+```typescript
+function unregisterDefaultData(
+  schemaPath: string
+): UnregisterDefaultDataAction
+```
+
+## Action Type Constants
+
+```typescript
+export const INIT = 'jsonforms/INIT';
+export const UPDATE_CORE = 'jsonforms/UPDATE_CORE';
+export const UPDATE_DATA = 'jsonforms/UPDATE';
+export const UPDATE_ERRORS = 'jsonforms/UPDATE_ERRORS';
+export const SET_SCHEMA = 'jsonforms/SET_SCHEMA';
+export const SET_UISCHEMA = 'jsonforms/SET_UISCHEMA';
+export const SET_VALIDATION_MODE = 'jsonforms/SET_VALIDATION_MODE';
+export const SET_AJV = 'jsonforms/SET_AJV';
+export const ADD_RENDERER = 'jsonforms/ADD_RENDERER';
+export const REMOVE_RENDERER = 'jsonforms/REMOVE_RENDERER';
+export const ADD_CELL = 'jsonforms/ADD_CELL';
+export const REMOVE_CELL = 'jsonforms/REMOVE_CELL';
+export const SET_CONFIG = 'jsonforms/SET_CONFIG';
+export const ADD_UI_SCHEMA = 'jsonforms/ADD_UI_SCHEMA';
+export const REMOVE_UI_SCHEMA = 'jsonforms/REMOVE_UI_SCHEMA';
+export const SET_LOCALE = 'jsonforms/SET_LOCALE';
+export const SET_TRANSLATOR = 'jsonforms/SET_TRANSLATOR';
+export const UPDATE_I18N = 'jsonforms/UPDATE_I18N';
+export const ADD_DEFAULT_DATA = 'jsonforms/ADD_DEFAULT_DATA';
+export const REMOVE_DEFAULT_DATA = 'jsonforms/REMOVE_DEFAULT_DATA';
+```

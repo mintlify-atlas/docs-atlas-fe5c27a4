@@ -1,0 +1,500 @@
+---
+title: Validation
+description: Learn how JSON Forms validates data using JSON Schema and AJV, and how to customize validation
+---
+
+## Overview
+
+JSON Forms uses [AJV (Another JSON Schema Validator)](https://ajv.js.org/) to validate form data against JSON Schema. Validation happens automatically and error messages are displayed next to the corresponding form controls.
+
+## Default Validation Setup
+
+JSON Forms creates an AJV instance with the following default configuration:
+
+```typescript
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+import type { ErrorObject, Options, ValidateFunction } from 'ajv';
+
+export const createAjv = (options?: Options) => {
+  const ajv = new Ajv({
+    allErrors: true,
+    verbose: true,
+    strict: false,
+    addUsedSchema: false,
+    ...options,
+  });
+  addFormats(ajv);
+  return ajv;
+};
+```
+
+### Default Options
+
+- `allErrors: true` - Check all validation rules and collect all errors
+- `verbose: true` - Include the schema and data in error messages
+- `strict: false` - Don't fail on unknown keywords
+- `addUsedSchema: false` - Don't add schemas to the instance automatically
+- Includes `ajv-formats` for format validation (email, date, uri, etc.)
+
+## Validate Function
+
+The core validation function:
+
+```typescript
+export const validate = (
+  validator: ValidateFunction | undefined,
+  data: any
+): ErrorObject[] => {
+  if (validator === undefined) {
+    return [];
+  }
+  const valid = validator(data);
+  if (valid) {
+    return [];
+  }
+  return validator.errors;
+};
+```
+
+## Error Object Structure
+
+AJV returns error objects with the following structure:
+
+```typescript
+interface ErrorObject {
+  keyword: string;          // validation keyword (e.g., 'required', 'minimum')
+  instancePath: string;     // path to the invalid data
+  schemaPath: string;       // path to the schema rule
+  params: Record<string, any>; // additional parameters
+  message?: string;         // error message
+  // ... additional properties
+}
+```
+
+## JSON Schema Validation Keywords
+
+### Type Validation
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "age": {
+      "type": "integer"
+    }
+  }
+}
+```
+
+### Required Fields
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "firstName": { "type": "string" },
+    "lastName": { "type": "string" }
+  },
+  "required": ["firstName", "lastName"]
+}
+```
+
+### String Validation
+
+```json
+{
+  "type": "string",
+  "minLength": 3,
+  "maxLength": 50,
+  "pattern": "^[A-Za-z]+$"
+}
+```
+
+### Number Validation
+
+```json
+{
+  "type": "number",
+  "minimum": 0,
+  "maximum": 100,
+  "multipleOf": 0.5
+}
+```
+
+### Array Validation
+
+```json
+{
+  "type": "array",
+  "items": {
+    "type": "string"
+  },
+  "minItems": 1,
+  "maxItems": 10,
+  "uniqueItems": true
+}
+```
+
+### Format Validation
+
+```json
+{
+  "type": "string",
+  "format": "email"
+}
+```
+
+Supported formats (via `ajv-formats`):
+- `date` - Full date (RFC 3339 section 5.6)
+- `time` - Time (RFC 3339 section 5.6)
+- `date-time` - Date and time (RFC 3339)
+- `uri` - Universal Resource Identifier
+- `email` - Email address
+- `hostname` - Host name
+- `ipv4` - IPv4 address
+- `ipv6` - IPv6 address
+- `regex` - Regular expression
+- `uuid` - UUID
+- `json-pointer` - JSON Pointer
+
+### Enum Validation
+
+```json
+{
+  "type": "string",
+  "enum": ["small", "medium", "large"]
+}
+```
+
+### Const Validation
+
+```json
+{
+  "type": "string",
+  "const": "fixed-value"
+}
+```
+
+## Custom AJV Instance
+
+You can provide a custom AJV instance to JSON Forms:
+
+```typescript
+import { createAjv } from '@jsonforms/core';
+import { JsonForms } from '@jsonforms/react';
+
+const customAjv = createAjv({
+  allErrors: true,
+  verbose: true,
+  // Custom options
+  coerceTypes: true, // Coerce types to match the schema
+});
+
+// Add custom formats
+customAjv.addFormat('phone', /^\d{3}-\d{3}-\d{4}$/);
+
+// Add custom keywords
+customAjv.addKeyword({
+  keyword: 'isEven',
+  validate: (schema: boolean, data: number) => {
+    if (!schema) return true;
+    return data % 2 === 0;
+  },
+});
+
+function App() {
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={renderers}
+      ajv={customAjv}
+      onChange={({ data }) => setData(data)}
+    />
+  );
+}
+```
+
+## Validation Modes
+
+JSON Forms supports different validation modes:
+
+```typescript
+export enum ValidationMode {
+  ValidateAndShow = 'ValidateAndShow',
+  ValidateAndHide = 'ValidateAndHide',
+  NoValidation = 'NoValidation',
+}
+```
+
+### ValidateAndShow (Default)
+
+Validates data and shows all errors:
+
+```typescript
+<JsonForms
+  schema={schema}
+  uischema={uischema}
+  data={data}
+  renderers={renderers}
+  validationMode="ValidateAndShow"
+/>
+```
+
+### ValidateAndHide
+
+Validates data but doesn't show errors in the UI:
+
+```typescript
+<JsonForms
+  schema={schema}
+  uischema={uischema}
+  data={data}
+  renderers={renderers}
+  validationMode="ValidateAndHide"
+/>
+```
+
+Useful when you want to validate but control error display yourself.
+
+### NoValidation
+
+Skips validation entirely:
+
+```typescript
+<JsonForms
+  schema={schema}
+  uischema={uischema}
+  data={data}
+  renderers={renderers}
+  validationMode="NoValidation"
+/>
+```
+
+## Accessing Validation Errors
+
+Validation errors are returned in the `onChange` callback:
+
+```typescript
+import { JsonFormsCore } from '@jsonforms/core';
+
+function App() {
+  const [errors, setErrors] = useState([]);
+  
+  const handleChange = (state: Pick<JsonFormsCore, 'data' | 'errors'>) => {
+    setData(state.data);
+    setErrors(state.errors);
+  };
+  
+  return (
+    <>
+      <JsonForms
+        schema={schema}
+        uischema={uischema}
+        data={data}
+        renderers={renderers}
+        onChange={handleChange}
+      />
+      
+      {errors.length > 0 && (
+        <div className="errors">
+          <h3>Validation Errors:</h3>
+          <ul>
+            {errors.map((error, index) => (
+              <li key={index}>
+                {error.instancePath}: {error.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+```
+
+## Custom Validators
+
+### Adding Custom Keywords
+
+```typescript
+import { createAjv } from '@jsonforms/core';
+
+const customAjv = createAjv();
+
+// Add custom keyword for credit card validation
+customAjv.addKeyword({
+  keyword: 'creditCard',
+  validate: (schema: boolean, data: string) => {
+    if (!schema) return true;
+    // Luhn algorithm for credit card validation
+    const cleaned = data.replace(/\s/g, '');
+    if (!/^\d{13,19}$/.test(cleaned)) return false;
+    
+    let sum = 0;
+    let isEven = false;
+    
+    for (let i = cleaned.length - 1; i >= 0; i--) {
+      let digit = parseInt(cleaned.charAt(i), 10);
+      if (isEven) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      sum += digit;
+      isEven = !isEven;
+    }
+    
+    return sum % 10 === 0;
+  },
+  errors: true,
+});
+
+// Use in schema
+const schema = {
+  type: 'object',
+  properties: {
+    cardNumber: {
+      type: 'string',
+      creditCard: true,
+    },
+  },
+};
+```
+
+### Adding Custom Formats
+
+```typescript
+const customAjv = createAjv();
+
+// Add custom format
+customAjv.addFormat('username', {
+  validate: (data: string) => {
+    // Username must be 3-20 characters, alphanumeric and underscores only
+    return /^[a-zA-Z0-9_]{3,20}$/.test(data);
+  },
+});
+
+const schema = {
+  type: 'object',
+  properties: {
+    username: {
+      type: 'string',
+      format: 'username',
+    },
+  },
+};
+```
+
+## Async Validation
+
+AJV supports async validation for cases like checking uniqueness:
+
+```typescript
+import Ajv from 'ajv';
+
+const customAjv = new Ajv({
+  allErrors: true,
+  verbose: true,
+});
+
+customAjv.addKeyword({
+  keyword: 'uniqueEmail',
+  async: true,
+  validate: async (schema: boolean, data: string) => {
+    if (!schema) return true;
+    
+    // Check if email exists in database
+    const response = await fetch(`/api/check-email?email=${data}`);
+    const { exists } = await response.json();
+    
+    return !exists;
+  },
+  errors: true,
+});
+```
+
+## Error Message Customization
+
+Customize error messages using the i18n system. See the [Internationalization](/advanced/i18n) page for details.
+
+Default error message handling:
+
+```typescript
+// Check for specialized keyword message
+const i18nKey = `${path}.error.${error.keyword}`;
+const specializedMessage = t(i18nKey, undefined, { error });
+
+// Check for generic keyword message
+const genericMessage = t(`error.${error.keyword}`, undefined, { error });
+
+// Fall back to AJV's default message
+return error.message;
+```
+
+## Common Validation Patterns
+
+### Password Strength
+
+```json
+{
+  "type": "string",
+  "minLength": 8,
+  "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]",
+  "description": "Must contain uppercase, lowercase, number, and special character"
+}
+```
+
+### Conditional Validation (Dependencies)
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "country": { "type": "string" },
+    "zipCode": { "type": "string" }
+  },
+  "if": {
+    "properties": { "country": { "const": "US" } }
+  },
+  "then": {
+    "properties": {
+      "zipCode": {
+        "pattern": "^\\d{5}(-\\d{4})?$"
+      }
+    },
+    "required": ["zipCode"]
+  }
+}
+```
+
+### Cross-Field Validation
+
+```typescript
+const schema = {
+  type: 'object',
+  properties: {
+    password: { type: 'string' },
+    confirmPassword: { type: 'string' },
+  },
+  // Custom validation
+  validate: (data: any) => {
+    return data.password === data.confirmPassword;
+  },
+};
+```
+
+## Best Practices
+
+1. **Use JSON Schema validation**: Leverage JSON Schema's built-in validation when possible
+2. **Provide clear error messages**: Use i18n to customize error messages for better UX
+3. **Validate early**: Set validation mode to show errors as users type
+4. **Keep validation in the schema**: Don't duplicate validation logic in your UI code
+5. **Use formats**: Leverage `ajv-formats` for common patterns like email and date
+6. **Test edge cases**: Ensure your validation handles null, undefined, and edge values
+7. **Consider performance**: Complex validation on large forms can impact performance
+8. **Document custom validators**: Clearly document any custom validation keywords or formats

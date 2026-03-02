@@ -1,0 +1,319 @@
+---
+title: Custom Renderers
+description: Learn how to create custom renderers for JSON Forms with proper tester functions and ranking
+---
+
+## Overview
+
+Custom renderers allow you to create your own UI components for rendering specific parts of your form. JSON Forms uses a tester-based system to determine which renderer should be used for each UI schema element.
+
+## Tester Functions
+
+A tester is a function that receives a UI schema element and a JSON schema, and returns a number indicating how well the renderer can handle that combination.
+
+### Tester Type Definition
+
+```typescript
+type Tester = (
+  uischema: UISchemaElement,
+  schema: JsonSchema,
+  context: TesterContext
+) => boolean;
+
+type RankedTester = (
+  uischema: UISchemaElement,
+  schema: JsonSchema,
+  context: TesterContext
+) => number;
+
+interface TesterContext {
+  /** The root JsonSchema of the form. Can be used to resolve references. */
+  rootSchema: JsonSchema;
+  /** The form wide configuration object given to JsonForms. */
+  config: any;
+}
+```
+
+### NOT_APPLICABLE Constant
+
+The `NOT_APPLICABLE` constant has a value of `-1` and indicates that a tester cannot handle the given combination:
+
+```typescript
+export const NOT_APPLICABLE = -1;
+```
+
+## Built-in Tester Functions
+
+JSON Forms provides many built-in tester utilities:
+
+### Type Checking
+
+```typescript
+// Check UI schema type
+const uiTypeIs = (expected: string): Tester =>
+  (uischema: UISchemaElement): boolean =>
+    !isEmpty(uischema) && uischema.type === expected;
+
+// Check schema type
+const schemaTypeIs = (expectedType: string): Tester =>
+  schemaMatches((schema) => !isEmpty(schema) && hasType(schema, expectedType));
+
+// Check format
+const formatIs = (expectedFormat: string): Tester =>
+  schemaMatches(
+    (schema) =>
+      !isEmpty(schema) &&
+      schema.format === expectedFormat &&
+      hasType(schema, 'string')
+  );
+```
+
+### Scope Checking
+
+```typescript
+// Check if scope ends with a specific string
+const scopeEndsWith = (expected: string): Tester =>
+  (uischema: UISchemaElement): boolean => {
+    if (isEmpty(expected) || !isControl(uischema)) {
+      return false;
+    }
+    return endsWith(uischema.scope, expected);
+  };
+
+// Check if the last segment of the scope matches
+const scopeEndIs = (expected: string): Tester =>
+  (uischema: UISchemaElement): boolean => {
+    if (isEmpty(expected) || !isControl(uischema)) {
+      return false;
+    }
+    const schemaPath = uischema.scope;
+    return !isEmpty(schemaPath) && last(schemaPath.split('/')) === expected;
+  };
+```
+
+### Option Checking
+
+```typescript
+// Check if an option has a specific value
+const optionIs = (optionName: string, optionValue: any): Tester =>
+  (uischema: UISchemaElement): boolean => {
+    if (isEmpty(uischema)) {
+      return false;
+    }
+    const options = uischema.options;
+    return !isEmpty(options) && options[optionName] === optionValue;
+  };
+
+// Check if an option exists
+const hasOption = (optionName: string): Tester =>
+  (uischema: UISchemaElement): boolean => {
+    if (isEmpty(uischema)) {
+      return false;
+    }
+    const options = uischema.options;
+    return !isEmpty(options) && !isUndefined(options[optionName]);
+  };
+```
+
+### Composing Testers
+
+```typescript
+// Combine testers with AND logic
+const and = (...testers: Tester[]): Tester =>
+  (uischema: UISchemaElement, schema: JsonSchema, context: TesterContext) =>
+    testers.reduce(
+      (acc, tester) => acc && tester(uischema, schema, context),
+      true
+    );
+
+// Combine testers with OR logic
+const or = (...testers: Tester[]): Tester =>
+  (uischema: UISchemaElement, schema: JsonSchema, context: TesterContext) =>
+    testers.reduce(
+      (acc, tester) => acc || tester(uischema, schema, context),
+      false
+    );
+
+// Negate a tester
+const not = (tester: Tester): Tester =>
+  (uischema: UISchemaElement, schema: JsonSchema, context: TesterContext) =>
+    !tester(uischema, schema, context);
+```
+
+## Creating a Ranked Tester
+
+Use `rankWith` to create a ranked tester from a boolean tester:
+
+```typescript
+const rankWith = (rank: number, tester: Tester) =>
+  (uischema: UISchemaElement, schema: JsonSchema, context: TesterContext): number => {
+    if (tester(uischema, schema, context)) {
+      return rank;
+    }
+    return NOT_APPLICABLE;
+  };
+```
+
+## Example: Custom Text Control
+
+Here's a complete example of a custom text control renderer:
+
+```typescript
+import React from 'react';
+import {
+  ControlProps,
+  isStringControl,
+  RankedTester,
+  rankWith,
+} from '@jsonforms/core';
+import { withJsonFormsControlProps } from '@jsonforms/react';
+
+export const MyTextControl = (props: ControlProps) => {
+  const { data, handleChange, path, errors } = props;
+  
+  return (
+    <div>
+      <input
+        type="text"
+        value={data || ''}
+        onChange={(ev) => handleChange(path, ev.target.value)}
+      />
+      {errors && <div className="error">{errors}</div>}
+    </div>
+  );
+};
+
+// Tester with rank 1 for string controls
+export const myTextControlTester: RankedTester = rankWith(
+  1,
+  isStringControl
+);
+
+export default withJsonFormsControlProps(MyTextControl);
+```
+
+## Example: Custom Control with Options
+
+Create a control that only renders when a specific option is set:
+
+```typescript
+import { and, optionIs, rankWith, isStringControl } from '@jsonforms/core';
+
+export const MySpecialTextControl = (props: ControlProps) => {
+  // Your custom implementation
+  return <div>Special Text Control</div>;
+};
+
+// Only render for string controls with option "special" set to true
+export const mySpecialTextControlTester: RankedTester = rankWith(
+  3, // Higher rank to override default text control
+  and(
+    isStringControl,
+    optionIs('special', true)
+  )
+);
+```
+
+## Renderer Priority
+
+JSON Forms selects the renderer with the highest rank. Common ranking conventions:
+
+- **1**: Default renderer
+- **2**: Slightly specialized renderer
+- **3-5**: More specialized renderers
+- **10+**: Highly specialized renderers
+
+If multiple renderers return the same rank, the last registered renderer wins.
+
+## Registering Custom Renderers
+
+Register your custom renderer with JSON Forms:
+
+```typescript
+import { JsonForms } from '@jsonforms/react';
+import { myTextControlTester, MyTextControl } from './MyTextControl';
+
+const renderers = [
+  { tester: myTextControlTester, renderer: MyTextControl },
+  // ... other renderers
+];
+
+function App() {
+  return (
+    <JsonForms
+      schema={schema}
+      uischema={uischema}
+      data={data}
+      renderers={renderers}
+      onChange={({ data }) => setData(data)}
+    />
+  );
+}
+```
+
+## Common Built-in Testers
+
+```typescript
+// Boolean controls
+export const isBooleanControl = and(
+  uiTypeIs('Control'),
+  schemaTypeIs('boolean')
+);
+
+// Integer controls
+export const isIntegerControl = and(
+  uiTypeIs('Control'),
+  schemaTypeIs('integer')
+);
+
+// Number controls
+export const isNumberControl = and(
+  uiTypeIs('Control'),
+  schemaTypeIs('number')
+);
+
+// String controls
+export const isStringControl = and(
+  uiTypeIs('Control'),
+  schemaTypeIs('string')
+);
+
+// Date controls
+export const isDateControl = and(
+  uiTypeIs('Control'),
+  or(formatIs('date'), optionIs('format', 'date'))
+);
+
+// Time controls
+export const isTimeControl = and(
+  uiTypeIs('Control'),
+  or(formatIs('time'), optionIs('format', 'time'))
+);
+
+// Multi-line text
+export const isMultiLineControl = and(
+  uiTypeIs('Control'),
+  optionIs('multi', true)
+);
+
+// Enum controls
+export const isEnumControl = and(
+  uiTypeIs('Control'),
+  schemaMatches((schema) => isEnumSchema(schema))
+);
+
+// Object array controls
+export const isObjectArrayControl = and(
+  uiTypeIs('Control'),
+  isObjectArray
+);
+```
+
+## Best Practices
+
+1. **Use descriptive ranks**: Choose ranks that clearly indicate the specificity of your renderer
+2. **Compose testers**: Use `and`, `or`, and `not` to create complex tester logic
+3. **Test thoroughly**: Ensure your tester returns the correct rank for all cases
+4. **Document your testers**: Clearly document when your custom renderer should be used
+5. **Use type guards**: Leverage TypeScript's type system for better type safety
+6. **Consider the context**: Use the `TesterContext` to access the root schema and config when needed
